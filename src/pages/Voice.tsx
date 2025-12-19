@@ -1,61 +1,66 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Sparkles, Upload, Link, FileText, CheckCircle2, Brain, Zap, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { Sparkles, FileText, Link, Brain, Zap, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { useVoiceProfile } from "@/hooks/useVoiceProfile";
 import { Progress } from "@/components/ui/progress";
 
 export default function Voice() {
-  const navigate = useNavigate();
+  const { signOut } = useAuth();
+  const { voiceProfile, isLoading, analyzeVoice } = useVoiceProfile();
   const [linkedInUrl, setLinkedInUrl] = useState("");
   const [pastedPosts, setPastedPosts] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [voiceScore, setVoiceScore] = useState(0);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        navigate("/auth");
-      }
-    });
-  }, [navigate]);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
 
   const handleAnalyze = async () => {
-    if (!pastedPosts.trim() && !linkedInUrl.trim()) {
-      toast.error("Please add some content to analyze");
+    if (!pastedPosts.trim()) {
       return;
     }
 
-    setIsAnalyzing(true);
-    toast.info("Analyzing your writing style...");
+    // Split posts by double newlines or separator
+    const posts = pastedPosts
+      .split(/\n\n+|---+/)
+      .map(p => p.trim())
+      .filter(p => p.length > 50); // Only keep substantial posts
 
-    // Simulate analysis
-    setTimeout(() => {
-      setVoiceScore(75);
-      setIsAnalyzing(false);
-      toast.success("Voice profile updated!");
-    }, 2000);
+    if (posts.length < 2) {
+      return;
+    }
+
+    await analyzeVoice.mutateAsync(posts);
+    setPastedPosts("");
   };
 
+  const voiceScore = voiceProfile?.is_trained ? 75 + Math.min(25, (voiceProfile.sample_posts?.length || 0) * 5) : 0;
+
   const voiceTraits = [
-    { label: "Tone", value: "Not analyzed", description: "Professional, Casual, etc." },
-    { label: "Sentence Length", value: "Not analyzed", description: "Short, Medium, Long" },
-    { label: "Emoji Usage", value: "Not analyzed", description: "Minimal, Moderate, Heavy" },
-    { label: "Formatting", value: "Not analyzed", description: "Lists, Paragraphs, Mixed" },
+    { 
+      label: "Tone", 
+      value: voiceProfile?.tone || "Not analyzed", 
+      description: "Professional, Casual, etc." 
+    },
+    { 
+      label: "Sentence Length", 
+      value: voiceProfile?.sentence_length || "Not analyzed", 
+      description: "Short, Medium, Long" 
+    },
+    { 
+      label: "Emoji Usage", 
+      value: voiceProfile?.emoji_usage || "Not analyzed", 
+      description: "Minimal, Moderate, Heavy" 
+    },
+    { 
+      label: "Writing Style", 
+      value: voiceProfile?.writing_style || "Not analyzed", 
+      description: "Story-driven, Data-backed, etc." 
+    },
   ];
 
   return (
-    <AppLayout onLogout={handleLogout}>
+    <AppLayout onLogout={signOut}>
       <div className="p-4 md:p-8 max-w-4xl mx-auto animate-fade-in">
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-1 flex items-center gap-3">
@@ -84,8 +89,17 @@ export default function Voice() {
             </div>
             <Progress value={voiceScore} className="h-2" />
             <p className="text-xs text-muted-foreground mt-2">
-              {voiceScore < 50 ? "Add more posts for better AI accuracy" : "Good foundation! Keep adding content for best results."}
+              {voiceScore < 50 
+                ? "Add more posts for better AI accuracy" 
+                : voiceScore < 90 
+                  ? "Good foundation! Keep adding content for best results."
+                  : "Excellent! Your AI voice is well-trained."}
             </p>
+            {voiceProfile?.sample_posts && voiceProfile.sample_posts.length > 0 && (
+              <p className="text-xs text-primary mt-1">
+                {voiceProfile.sample_posts.length} posts analyzed
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -150,12 +164,12 @@ export default function Voice() {
             variant="gradient"
             size="xl"
             onClick={handleAnalyze}
-            disabled={isAnalyzing || (!pastedPosts.trim() && !linkedInUrl.trim())}
+            disabled={analyzeVoice.isPending || !pastedPosts.trim()}
             className="gap-2"
           >
-            {isAnalyzing ? (
+            {analyzeVoice.isPending ? (
               <>
-                <Brain className="w-5 h-5 animate-pulse" />
+                <Loader2 className="w-5 h-5 animate-spin" />
                 Analyzing...
               </>
             ) : (
@@ -174,20 +188,43 @@ export default function Voice() {
             <CardTitle className="text-lg flex items-center gap-2">
               <Brain className="w-5 h-5 text-primary" />
               Your Voice Profile
+              {voiceProfile?.is_trained && (
+                <CheckCircle2 className="w-4 h-4 text-green-500 ml-2" />
+              )}
             </CardTitle>
             <CardDescription>
               What the AI knows about your writing style
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 mb-6">
               {voiceTraits.map((trait) => (
                 <div key={trait.label} className="p-4 rounded-lg bg-secondary/50 border border-border">
                   <h4 className="font-medium text-foreground mb-1">{trait.label}</h4>
-                  <p className="text-sm text-muted-foreground">{trait.value}</p>
+                  <p className="text-sm text-muted-foreground capitalize">{trait.value}</p>
                 </div>
               ))}
             </div>
+            
+            {voiceProfile?.analysis_summary && (
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                <h4 className="font-medium text-foreground mb-2">AI Summary</h4>
+                <p className="text-sm text-muted-foreground">{voiceProfile.analysis_summary}</p>
+              </div>
+            )}
+
+            {voiceProfile?.formatting_patterns && voiceProfile.formatting_patterns.length > 0 && (
+              <div className="mt-4">
+                <h4 className="font-medium text-foreground mb-2">Formatting Patterns</h4>
+                <div className="flex flex-wrap gap-2">
+                  {voiceProfile.formatting_patterns.map((pattern, i) => (
+                    <span key={i} className="px-3 py-1 rounded-full bg-secondary text-xs text-foreground">
+                      {pattern}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

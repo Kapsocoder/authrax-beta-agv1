@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Eye, Wand2, Save, Send, Clock, ChevronDown } from "lucide-react";
+import { ArrowLeft, Eye, Wand2, Save, Send, Clock, ChevronDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PostEditor } from "@/components/post/PostEditor";
 import { LinkedInPreview } from "@/components/post/LinkedInPreview";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { usePosts } from "@/hooks/usePosts";
+import { useAIGeneration } from "@/hooks/useAIGeneration";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -14,46 +16,62 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function Create() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user, signOut } = useAuth();
+  const { createPost } = usePosts();
+  const { generatePost, isGenerating } = useAIGeneration();
+  
   const [content, setContent] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("write");
+  const [showAIDialog, setShowAIDialog] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
 
   const initialTopic = searchParams.get("topic") || "";
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-      }
-    });
-  }, [navigate]);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
-
   const handleGenerateAI = async () => {
-    setIsGenerating(true);
-    toast.info("AI generation will be enabled after voice training setup");
-    setTimeout(() => {
-      setIsGenerating(false);
-    }, 1500);
+    if (!aiPrompt.trim() && !initialTopic) {
+      setShowAIDialog(true);
+      return;
+    }
+
+    const prompt = aiPrompt.trim() || initialTopic;
+    try {
+      const generatedContent = await generatePost.mutateAsync({
+        prompt,
+        type: "topic",
+      });
+      setContent(generatedContent);
+      setShowAIDialog(false);
+      setAiPrompt("");
+      toast.success("Content generated!");
+    } catch (error) {
+      // Error is handled in the hook
+    }
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!content.trim()) {
       toast.error("Write something first!");
       return;
     }
-    toast.success("Draft saved!");
+    
+    await createPost.mutateAsync({
+      content,
+      status: "draft",
+      is_ai_generated: false,
+    });
   };
 
   const handleSchedule = () => {
@@ -84,7 +102,7 @@ export default function Create() {
   const userName = user?.user_metadata?.full_name || "Your Name";
 
   return (
-    <AppLayout onLogout={handleLogout}>
+    <AppLayout onLogout={signOut}>
       <div className="min-h-screen animate-fade-in">
         {/* Header */}
         <header className="sticky top-0 z-40 glass-strong border-b border-border/50 px-4 py-3">
@@ -101,8 +119,17 @@ export default function Create() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={handleSaveDraft}>
-                <Save className="w-4 h-4 mr-2" />
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleSaveDraft}
+                disabled={createPost.isPending}
+              >
+                {createPost.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
                 <span className="hidden sm:inline">Save</span>
               </Button>
               
@@ -156,7 +183,7 @@ export default function Create() {
                 <PostEditor
                   value={content}
                   onChange={setContent}
-                  onGenerateAI={handleGenerateAI}
+                  onGenerateAI={() => setShowAIDialog(true)}
                   isGenerating={isGenerating}
                   placeholder={initialTopic ? `Share your thoughts on ${initialTopic}...` : "What do you want to share?"}
                 />
@@ -178,7 +205,7 @@ export default function Create() {
               <PostEditor
                 value={content}
                 onChange={setContent}
-                onGenerateAI={handleGenerateAI}
+                onGenerateAI={() => setShowAIDialog(true)}
                 isGenerating={isGenerating}
                 placeholder={initialTopic ? `Share your thoughts on ${initialTopic}...` : "What do you want to share?"}
               />
@@ -196,6 +223,51 @@ export default function Create() {
             </div>
           </div>
         </div>
+
+        {/* AI Generation Dialog */}
+        <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Wand2 className="w-5 h-5 text-primary" />
+                Generate with AI
+              </DialogTitle>
+              <DialogDescription>
+                Describe what you want to write about and let AI create a draft in your voice.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-4">
+              <div>
+                <Label htmlFor="ai-prompt">Topic or prompt</Label>
+                <Input
+                  id="ai-prompt"
+                  placeholder="e.g., 'My lessons from leading a remote team for 5 years'"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  className="mt-2"
+                />
+              </div>
+              <Button 
+                variant="gradient" 
+                className="w-full" 
+                onClick={handleGenerateAI}
+                disabled={isGenerating || !aiPrompt.trim()}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    Generate Post
+                  </>
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
