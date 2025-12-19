@@ -1,1 +1,7 @@
 project_id = "ukvqaalbwucywgtkgzsg"
+
+[functions.generate-post]
+verify_jwt = true
+
+[functions.analyze-voice]
+verify_jwt = true

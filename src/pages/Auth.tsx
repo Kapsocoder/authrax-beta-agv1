@@ -4,13 +4,14 @@ import { Sparkles, Mail, Lock, User, ArrowRight, Linkedin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 type AuthMode = "signin" | "signup";
 
 export default function Auth() {
   const navigate = useNavigate();
+  const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -25,24 +26,12 @@ export default function Auth() {
 
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: {
-              full_name: formData.fullName,
-            },
-          },
-        });
+        const { error } = await signUp(formData.email, formData.password, formData.fullName);
         if (error) throw error;
         toast.success("Account created! Welcome to Authrax.");
         navigate("/dashboard");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
+        const { error } = await signIn(formData.email, formData.password);
         if (error) throw error;
         toast.success("Welcome back!");
         navigate("/dashboard");
