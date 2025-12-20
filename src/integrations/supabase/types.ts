@@ -100,36 +100,54 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
+          company: string | null
           created_at: string
           full_name: string | null
           headline: string | null
           id: string
+          linkedin_id: string | null
+          linkedin_linked_at: string | null
           linkedin_profile_url: string | null
+          location: string | null
           notification_preferences: Json | null
+          onboarding_completed: boolean | null
           timezone: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
+          company?: string | null
           created_at?: string
           full_name?: string | null
           headline?: string | null
           id?: string
+          linkedin_id?: string | null
+          linkedin_linked_at?: string | null
           linkedin_profile_url?: string | null
+          location?: string | null
           notification_preferences?: Json | null
+          onboarding_completed?: boolean | null
           timezone?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
+          company?: string | null
           created_at?: string
           full_name?: string | null
           headline?: string | null
           id?: string
+          linkedin_id?: string | null
+          linkedin_linked_at?: string | null
           linkedin_profile_url?: string | null
+          location?: string | null
           notification_preferences?: Json | null
+          onboarding_completed?: boolean | null
           timezone?: string | null
           updated_at?: string
           user_id?: string
@@ -137,6 +155,30 @@ export type Database = {
         Relationships: []
       }
       topics: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_topics: {
         Row: {
           created_at: string
           id: string
@@ -170,6 +212,8 @@ export type Database = {
           is_trained: boolean | null
           sample_posts: string[] | null
           sentence_length: string | null
+          source_type: string | null
+          system_prompt: string | null
           tone: string | null
           trained_at: string | null
           updated_at: string
@@ -185,6 +229,8 @@ export type Database = {
           is_trained?: boolean | null
           sample_posts?: string[] | null
           sentence_length?: string | null
+          source_type?: string | null
+          system_prompt?: string | null
           tone?: string | null
           trained_at?: string | null
           updated_at?: string
@@ -200,6 +246,8 @@ export type Database = {
           is_trained?: boolean | null
           sample_posts?: string[] | null
           sentence_length?: string | null
+          source_type?: string | null
+          system_prompt?: string | null
           tone?: string | null
           trained_at?: string | null
           updated_at?: string

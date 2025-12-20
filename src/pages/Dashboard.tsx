@@ -1,47 +1,59 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { PenSquare, TrendingUp, Calendar, Sparkles, ArrowRight, Zap, Clock, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
+import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { useVoiceProfile } from "@/hooks/useVoiceProfile";
+import { usePosts } from "@/hooks/usePosts";
+import { useUserTopics } from "@/hooks/useUserTopics";
 import { toast } from "sonner";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const [searchParams] = useSearchParams();
+  const { user, signOut } = useAuth();
+  const { profile, needsOnboarding, isLoading: profileLoading } = useProfile();
+  const { voiceProfile } = useVoiceProfile();
+  const { posts } = usePosts();
+  const { topics } = useUserTopics();
   const [greeting, setGreeting] = useState("");
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Check if coming from LinkedIn OAuth onboarding
+  const isLinkedInOnboarding = searchParams.get("onboarding") === "linkedin";
 
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) setGreeting("Good morning");
     else if (hour < 18) setGreeting("Good afternoon");
     else setGreeting("Good evening");
+  }, []);
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+  useEffect(() => {
+    if (!profileLoading && needsOnboarding) {
+      setShowOnboarding(true);
+    }
+  }, [profileLoading, needsOnboarding]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     toast.success("Logged out successfully");
     navigate("/auth");
   };
+
+  if (showOnboarding) {
+    return (
+      <OnboardingFlow 
+        onComplete={() => setShowOnboarding(false)} 
+        isLinkedInLogin={isLinkedInOnboarding}
+      />
+    );
+  }
+
 
   const quickActions = [
     {
@@ -67,14 +79,27 @@ export default function Dashboard() {
     },
   ];
 
+  const postsThisWeek = posts?.filter(p => {
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return new Date(p.created_at) > weekAgo;
+  }).length || 0;
+
+  const scheduledCount = posts?.filter(p => p.status === "scheduled").length || 0;
+  const voiceScore = voiceProfile?.is_trained ? "85%" : "Train";
+
   const stats = [
-    { label: "Posts This Week", value: "0", icon: PenSquare, trend: null },
-    { label: "Total Impressions", value: "0", icon: TrendingUp, trend: null },
-    { label: "Scheduled", value: "0", icon: Clock, trend: null },
-    { label: "Voice Score", value: "Train", icon: Target, trend: null },
+    { label: "Posts This Week", value: String(postsThisWeek), icon: PenSquare },
+    { label: "Total Impressions", value: "—", icon: TrendingUp },
+    { label: "Scheduled", value: String(scheduledCount), icon: Clock },
+    { label: "Voice Score", value: voiceScore, icon: Target },
   ];
 
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || "there";
+  const userName = user?.user_metadata?.full_name || profile?.full_name || user?.email?.split('@')[0] || "there";
+
+  const trendingTopics = topics.length > 0 
+    ? topics.filter(t => t.is_active).map(t => t.name)
+    : ["AI in Business", "Leadership", "Remote Work", "Career Growth", "Productivity", "Tech Trends"];
 
   return (
     <AppLayout onLogout={handleLogout}>
@@ -135,14 +160,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {[
-                "AI in Business",
-                "Leadership",
-                "Remote Work",
-                "Career Growth",
-                "Productivity",
-                "Tech Trends",
-              ].map((topic) => (
+              {trendingTopics.slice(0, 6).map((topic) => (
                 <button
                   key={topic}
                   onClick={() => navigate(`/create?topic=${encodeURIComponent(topic)}`)}
@@ -152,7 +170,7 @@ export default function Dashboard() {
                 </button>
               ))}
             </div>
-            <Button variant="link" className="mt-4 p-0 text-primary" onClick={() => navigate("/topics")}>
+            <Button variant="link" className="mt-4 p-0 text-primary" onClick={() => navigate("/settings")}>
               Manage your topics →
             </Button>
           </CardContent>

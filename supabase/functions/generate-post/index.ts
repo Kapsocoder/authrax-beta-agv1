@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, type, userId } = await req.json();
+    const { prompt, type, userId, tone } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -21,6 +21,7 @@ serve(async (req) => {
 
     // Get user's voice profile for personalization
     let voiceContext = "";
+    let systemPromptOverride = "";
     if (userId) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -32,8 +33,14 @@ serve(async (req) => {
         .eq("user_id", userId)
         .maybeSingle();
       
-      if (voiceProfile?.is_trained && voiceProfile.analysis_summary) {
-        voiceContext = `
+      if (voiceProfile?.is_trained) {
+        // Use custom system prompt if available
+        if (voiceProfile.system_prompt) {
+          systemPromptOverride = voiceProfile.system_prompt;
+        }
+        
+        if (voiceProfile.analysis_summary) {
+          voiceContext = `
         
 IMPORTANT - Match the user's writing style:
 ${voiceProfile.analysis_summary}
@@ -43,10 +50,22 @@ Writing style: ${voiceProfile.writing_style || "informative"}
 Emoji usage: ${voiceProfile.emoji_usage || "moderate"}
 Sentence length: ${voiceProfile.sentence_length || "medium"}
 `;
+        }
       }
     }
 
-    const systemPrompt = `You are an expert LinkedIn content creator. Generate engaging, authentic LinkedIn posts that drive engagement.
+    // Tone overlays
+    const toneInstructions: Record<string, string> = {
+      professional: "Write in a polished, business-appropriate tone. Be authoritative but approachable.",
+      witty: "Add clever observations and subtle humor. Be engaging and entertaining while staying professional.",
+      inspiring: "Be motivational and uplifting. Share insights that inspire action and positive change.",
+      casual: "Write in a friendly, conversational tone. Be relatable and approachable like talking to a friend.",
+      educational: "Focus on teaching and sharing knowledge. Use clear explanations and practical examples.",
+    };
+
+    const toneOverlay = tone && toneInstructions[tone] ? `\n\nTone overlay: ${toneInstructions[tone]}` : "";
+
+    const systemPrompt = systemPromptOverride || `You are an expert LinkedIn content creator. Generate engaging, authentic LinkedIn posts that drive engagement.
 
 Guidelines:
 - Write in first person
@@ -57,18 +76,20 @@ Guidelines:
 - Keep posts between 150-300 words for optimal engagement
 - DO NOT include hashtags at the end
 - Make it feel personal and authentic, not corporate
-${voiceContext}`;
+${voiceContext}${toneOverlay}`;
 
     let userPrompt = "";
     switch (type) {
       case "topic":
+      case "idea":
         userPrompt = `Write a LinkedIn post about: ${prompt}`;
         break;
       case "url":
-        userPrompt = `Write a LinkedIn post sharing insights or commentary about this content: ${prompt}`;
+        userPrompt = `Write a LinkedIn post sharing insights or commentary about this content. Summarize the key points and add your personal take: ${prompt}`;
         break;
       case "notes":
-        userPrompt = `Transform these notes into an engaging LinkedIn post: ${prompt}`;
+      case "voice":
+        userPrompt = `Transform these rough thoughts/notes into a polished, engaging LinkedIn post. Keep the core message but make it engaging: ${prompt}`;
         break;
       default:
         userPrompt = prompt;
