@@ -13,12 +13,17 @@ import {
   Edit3,
   Link2,
   Video,
-  FileText
+  FileText,
+  Newspaper,
+  MessageCircle,
+  ExternalLink,
+  Loader2
 } from "lucide-react";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { Post } from "@/hooks/usePosts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
 import { TrendingTemplates } from "@/components/templates/TrendingTemplates";
@@ -27,6 +32,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useVoiceProfile } from "@/hooks/useVoiceProfile";
 import { usePosts } from "@/hooks/usePosts";
 import { useUserTopics } from "@/hooks/useUserTopics";
+import { useTrending } from "@/hooks/useTrending";
 import { toast } from "sonner";
 
 export default function Dashboard() {
@@ -168,6 +174,9 @@ export default function Dashboard() {
     ? topics.filter(t => t.is_active).map(t => t.name)
     : ["AI in Business", "Leadership", "Remote Work", "Career Growth", "Productivity", "Tech Trends"];
 
+  // Fetch trending data based on user's topics
+  const { data: trendingData, isLoading: trendingLoading } = useTrending(trendingTopics);
+
   // Recent drafts - sorted by updated_at, show most recent 3
   const recentDrafts = useMemo(() => {
     return (posts || [])
@@ -175,6 +184,18 @@ export default function Dashboard() {
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
       .slice(0, 3);
   }, [posts]);
+
+  const formatTimeAgo = (timestamp: number | string) => {
+    const date = typeof timestamp === "number" ? new Date(timestamp * 1000) : new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffDays > 0) return `${diffDays}d ago`;
+    if (diffHours > 0) return `${diffHours}h ago`;
+    return "Just now";
+  };
 
   // Smart edit routing - if draft has generated content (is_ai_generated), go to Edit mode
   // Otherwise go to Studio to continue working on it
@@ -257,13 +278,19 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Trending Topics */}
-        <Card className="bg-card border-border mb-8">
+        {/* Trending Topics Header */}
+        <Card className="bg-card border-border mb-4">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Zap className="w-5 h-5 text-primary" />
-              Trending Topics
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Zap className="w-5 h-5 text-primary" />
+                Trending Topics
+              </CardTitle>
+              <Button variant="ghost" size="sm" className="text-primary" onClick={() => navigate("/trending")}>
+                View All
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
@@ -282,6 +309,96 @@ export default function Dashboard() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Trending News & Posts Grid */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          {/* Latest News */}
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Newspaper className="w-4 h-4 text-primary" />
+                  Latest News
+                </CardTitle>
+                <Button variant="ghost" size="sm" className="text-xs text-primary" onClick={() => navigate("/trending")}>
+                  More
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {trendingLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (trendingData?.news?.slice(0, 5) || []).length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No news found for your topics</p>
+              ) : (
+                (trendingData?.news?.slice(0, 5) || []).map((news, index) => (
+                  <div 
+                    key={`${news.link}-${index}`}
+                    className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/50 cursor-pointer transition-all"
+                    onClick={() => window.open(news.link, "_blank")}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1 mb-1">
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{news.source}</Badge>
+                        </div>
+                        <h4 className="text-sm font-medium text-foreground line-clamp-2">{news.title}</h4>
+                        <p className="text-xs text-muted-foreground mt-1">{formatTimeAgo(news.pubDate)}</p>
+                      </div>
+                      <ExternalLink className="w-3 h-3 text-muted-foreground flex-shrink-0 mt-1" />
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Trending Discussions */}
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MessageCircle className="w-4 h-4 text-primary" />
+                  Trending Discussions
+                </CardTitle>
+                <Button variant="ghost" size="sm" className="text-xs text-primary" onClick={() => navigate("/trending")}>
+                  More
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {trendingLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (trendingData?.posts?.slice(0, 5) || []).length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No discussions found for your topics</p>
+              ) : (
+                (trendingData?.posts?.slice(0, 5) || []).map((post, index) => (
+                  <div 
+                    key={`${post.permalink}-${index}`}
+                    className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/50 cursor-pointer transition-all"
+                    onClick={() => window.open(post.permalink, "_blank")}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 mb-1">r/{post.subreddit}</Badge>
+                        <h4 className="text-sm font-medium text-foreground line-clamp-2">{post.title}</h4>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <span>↑ {post.score}</span>
+                          <span>{post.numComments} comments</span>
+                        </div>
+                      </div>
+                      <ExternalLink className="w-3 h-3 text-muted-foreground flex-shrink-0 mt-1" />
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Trending Templates */}
         <div className="mb-8">
