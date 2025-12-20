@@ -1,10 +1,25 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { PenSquare, TrendingUp, Calendar, Sparkles, ArrowRight, Zap, Clock, Target } from "lucide-react";
+import { 
+  PenSquare, 
+  TrendingUp, 
+  Calendar, 
+  Sparkles, 
+  ArrowRight, 
+  Zap, 
+  Clock, 
+  Target,
+  Mic,
+  Edit3,
+  Link2,
+  Video,
+  FileText
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
+import { TrendingTemplates } from "@/components/templates/TrendingTemplates";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useVoiceProfile } from "@/hooks/useVoiceProfile";
@@ -54,6 +69,56 @@ export default function Dashboard() {
     );
   }
 
+  // "What's on your mind?" capture options
+  const captureOptions = [
+    {
+      icon: Mic,
+      label: "Capture an Idea",
+      description: "Voice notes on the go",
+      path: "/create",
+      state: { mode: "voice" },
+      gradient: "bg-gradient-primary",
+    },
+    {
+      icon: Edit3,
+      label: "Draft a Post",
+      description: "Write with personal touch",
+      path: "/create",
+      state: { mode: "draft" },
+      gradient: "bg-gradient-accent",
+    },
+    {
+      icon: Calendar,
+      label: "Schedule for later",
+      description: "Plan your content",
+      path: "/schedule",
+      gradient: "from-warning to-orange-500",
+    },
+    {
+      icon: Link2,
+      label: "Import a link",
+      description: "Turn articles into posts",
+      path: "/create",
+      state: { mode: "url" },
+      gradient: "from-blue-500 to-cyan-500",
+    },
+    {
+      icon: Video,
+      label: "From a Video",
+      description: "Repurpose video content",
+      path: "/create",
+      state: { mode: "video" },
+      gradient: "from-red-500 to-pink-500",
+    },
+    {
+      icon: FileText,
+      label: "Repurpose a PDF",
+      description: "Transform documents",
+      path: "/create",
+      state: { mode: "pdf" },
+      gradient: "from-purple-500 to-violet-500",
+    },
+  ];
 
   const quickActions = [
     {
@@ -114,26 +179,32 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {quickActions.map((action) => (
-            <button
-              key={action.path}
-              onClick={() => navigate(action.path)}
-              className="group relative overflow-hidden rounded-2xl p-6 text-left transition-all duration-300 hover:scale-[1.02] hover:shadow-elevated bg-card border border-border"
-            >
-              <div className={`absolute top-0 right-0 w-32 h-32 ${action.gradient} opacity-10 rounded-full blur-2xl transform translate-x-8 -translate-y-8 group-hover:opacity-20 transition-opacity`} />
-              <div className={`w-12 h-12 rounded-xl ${action.gradient} bg-gradient-to-br flex items-center justify-center mb-4 shadow-lg`}>
-                <action.icon className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <h3 className="font-semibold text-foreground mb-1 flex items-center gap-2">
-                {action.label}
-                <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-              </h3>
-              <p className="text-sm text-muted-foreground">{action.description}</p>
-            </button>
-          ))}
-        </div>
+        {/* What's on your mind? - Capture Options */}
+        <Card className="bg-card border-border mb-8">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              What's on your mind?
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {captureOptions.map((option) => (
+                <button
+                  key={option.label}
+                  onClick={() => navigate(option.path, { state: option.state })}
+                  className="group relative overflow-hidden rounded-xl p-4 text-center transition-all duration-300 hover:scale-[1.02] hover:shadow-md bg-secondary/50 border border-border hover:border-primary/50"
+                >
+                  <div className={`w-10 h-10 mx-auto rounded-lg ${option.gradient} bg-gradient-to-br flex items-center justify-center mb-2 shadow-sm group-hover:shadow-md transition-shadow`}>
+                    <option.icon className="w-5 h-5 text-primary-foreground" />
+                  </div>
+                  <h4 className="font-medium text-sm text-foreground mb-0.5">{option.label}</h4>
+                  <p className="text-xs text-muted-foreground hidden md:block">{option.description}</p>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -176,7 +247,12 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Drafts Placeholder */}
+        {/* Trending Templates */}
+        <div className="mb-8">
+          <TrendingTemplates />
+        </div>
+
+        {/* Recent Drafts */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Recent Drafts</CardTitle>
