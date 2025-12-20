@@ -1,12 +1,12 @@
-import { Home, PenSquare, Calendar, BarChart3, User } from "lucide-react";
+import { Home, PenSquare, TrendingUp, FileText, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: Home, label: "Home", path: "/dashboard" },
   { icon: PenSquare, label: "Create", path: "/create" },
-  { icon: Calendar, label: "Schedule", path: "/schedule" },
-  { icon: BarChart3, label: "Analytics", path: "/analytics" },
+  { icon: FileText, label: "Drafts", path: "/drafts" },
+  { icon: TrendingUp, label: "Trending", path: "/trending" },
   { icon: User, label: "Profile", path: "/profile" },
 ];
 
