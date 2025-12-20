@@ -154,6 +154,66 @@ export type Database = {
         }
         Relationships: []
       }
+      templates: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          example: string | null
+          formats: string[]
+          id: string
+          is_custom: boolean | null
+          is_system: boolean | null
+          is_trending: boolean | null
+          name: string
+          objectives: string[]
+          prompt: string
+          structure: string
+          themes: string[]
+          updated_at: string
+          user_id: string | null
+          user_type: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          example?: string | null
+          formats?: string[]
+          id?: string
+          is_custom?: boolean | null
+          is_system?: boolean | null
+          is_trending?: boolean | null
+          name: string
+          objectives?: string[]
+          prompt: string
+          structure: string
+          themes?: string[]
+          updated_at?: string
+          user_id?: string | null
+          user_type: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          example?: string | null
+          formats?: string[]
+          id?: string
+          is_custom?: boolean | null
+          is_system?: boolean | null
+          is_trending?: boolean | null
+          name?: string
+          objectives?: string[]
+          prompt?: string
+          structure?: string
+          themes?: string[]
+          updated_at?: string
+          user_id?: string | null
+          user_type?: string
+        }
+        Relationships: []
+      }
       topics: {
         Row: {
           created_at: string
