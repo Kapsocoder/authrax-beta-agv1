@@ -65,15 +65,14 @@ export function TemplateCard({ template, onClick, selected, compact, showBadges 
             <Icon className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-foreground truncate">{template.name}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-foreground truncate flex-1">{template.name}</h3>
+              {template.isTrending && (
+                <TrendingUp className="w-4 h-4 text-primary shrink-0" />
+              )}
+            </div>
             <p className="text-sm text-muted-foreground capitalize">{template.userType}</p>
           </div>
-          {template.isTrending && (
-            <Badge variant="secondary" className="text-xs">
-              <TrendingUp className="w-3 h-3 mr-1" />
-              Trending
-            </Badge>
-          )}
         </div>
         <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
           {template.description}
