@@ -1,4 +1,4 @@
-import { Template } from "@/data/templates";
+import { Template, themeColors, formatColors, objectiveColors } from "@/data/templates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Briefcase, User, TrendingUp } from "lucide-react";
@@ -9,6 +9,7 @@ interface TemplateCardProps {
   onClick?: () => void;
   selected?: boolean;
   compact?: boolean;
+  showBadges?: boolean;
 }
 
 const userTypeIcons = {
@@ -23,7 +24,7 @@ const userTypeColors = {
   professional: "bg-secondary text-secondary-foreground",
 };
 
-export function TemplateCard({ template, onClick, selected, compact }: TemplateCardProps) {
+export function TemplateCard({ template, onClick, selected, compact, showBadges = true }: TemplateCardProps) {
   const Icon = userTypeIcons[template.userType];
 
   if (compact) {
@@ -77,10 +78,28 @@ export function TemplateCard({ template, onClick, selected, compact }: TemplateC
         <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
           {template.description}
         </p>
-        <div className="flex flex-wrap gap-1">
-          <Badge variant="outline" className="text-xs">{template.format}</Badge>
-          <Badge variant="outline" className="text-xs">{template.category}</Badge>
-        </div>
+        {showBadges && (
+          <div className="flex flex-wrap gap-1">
+            <Badge 
+              variant="outline" 
+              className={cn("text-xs border", themeColors[template.theme] || "bg-muted/50 text-muted-foreground")}
+            >
+              {template.theme}
+            </Badge>
+            <Badge 
+              variant="outline" 
+              className={cn("text-xs border", formatColors[template.format] || "bg-muted/50 text-muted-foreground")}
+            >
+              {template.format}
+            </Badge>
+            <Badge 
+              variant="outline" 
+              className={cn("text-xs border", objectiveColors[template.objective] || "bg-muted/50 text-muted-foreground")}
+            >
+              {template.objective}
+            </Badge>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

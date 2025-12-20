@@ -30,7 +30,9 @@ export function ToneSelector({ selected, onChange }: ToneSelectorProps) {
             onClick={() => onChange(tone.value)}
             className={cn(
               "transition-all",
-              selected === tone.value && "ring-2 ring-primary/20"
+              selected === tone.value 
+                ? "ring-2 ring-primary/20 text-primary-foreground" 
+                : "text-foreground hover:text-foreground"
             )}
             title={tone.description}
           >
