@@ -162,10 +162,10 @@ export default function Dashboard() {
   const voiceScore = voiceProfile?.is_trained ? "85%" : "Train";
 
   const stats = [
-    { label: "Posts This Week", value: String(postsThisWeek), icon: PenSquare },
-    { label: "Total Impressions", value: "—", icon: TrendingUp },
-    { label: "Scheduled", value: String(scheduledCount), icon: Clock },
-    { label: "Voice Score", value: voiceScore, icon: Target },
+    { label: "Posts This Week", value: String(postsThisWeek), icon: PenSquare, path: "/drafts" },
+    { label: "Total Impressions", value: "—", icon: TrendingUp, path: "/analytics" },
+    { label: "Scheduled", value: String(scheduledCount), icon: Clock, path: "/schedule" },
+    { label: "Voice Score", value: voiceScore, icon: Target, path: "/voice" },
   ];
 
   const userName = user?.user_metadata?.full_name || profile?.full_name || user?.email?.split('@')[0] || "there";
@@ -266,7 +266,11 @@ export default function Dashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {stats.map((stat) => (
-            <Card key={stat.label} className="bg-card border-border">
+            <Card 
+              key={stat.label} 
+              className="bg-card border-border cursor-pointer hover:border-primary/50 transition-all hover:shadow-md"
+              onClick={() => navigate(stat.path)}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <stat.icon className="w-5 h-5 text-muted-foreground" />
