@@ -265,21 +265,32 @@ export default function Create() {
     }
   };
 
+  const [dialogTemplate, setDialogTemplate] = useState<Template | null>(null);
+
   const handleRegenerateAI = async () => {
-    if (!aiPrompt.trim()) {
-      toast.error("Enter instructions for regeneration");
+    if (!aiPrompt.trim() && !dialogTemplate) {
+      toast.error("Enter instructions or select a template");
       return;
     }
 
     try {
+      let prompt = `${generatedContent}\n\n`;
+      if (aiPrompt.trim()) {
+        prompt += `Modifications requested: ${aiPrompt}\n\n`;
+      }
+      if (dialogTemplate) {
+        prompt += `Use this template format:\nTemplate: ${dialogTemplate.name}\nStructure: ${dialogTemplate.structure}\nDescription: ${dialogTemplate.description}`;
+      }
+
       const result = await generatePost.mutateAsync({
-        prompt: `${generatedContent}\n\nModifications requested: ${aiPrompt}`,
+        prompt,
         type: "topic",
         tone: selectedTone,
       });
       setGeneratedContent(result);
       setShowAIDialog(false);
       setAiPrompt("");
+      setDialogTemplate(null);
       toast.success("Content regenerated!");
     } catch (error) {
       // Error handled in hook
@@ -412,8 +423,14 @@ export default function Create() {
           </div>
 
           {/* AI Regeneration Dialog */}
-          <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
-            <DialogContent>
+          <Dialog open={showAIDialog} onOpenChange={(open) => {
+            setShowAIDialog(open);
+            if (!open) {
+              setDialogTemplate(null);
+              setAiPrompt("");
+            }
+          }}>
+            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Wand2 className="w-5 h-5 text-primary" />
@@ -434,14 +451,51 @@ export default function Create() {
                     className="mt-2"
                   />
                 </div>
-                <div className="mb-4">
+
+                {/* Tone Selector */}
+                <div>
+                  <Label className="mb-2 block">Tone</Label>
                   <ToneSelector selected={selectedTone} onChange={setSelectedTone} />
                 </div>
+
+                {/* Template Selection */}
+                <div>
+                  <Label className="mb-2 block">Template (optional)</Label>
+                  {dialogTemplate ? (
+                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <LayoutTemplate className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium">{dialogTemplate.name}</span>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setDialogTemplate(null)}
+                      >
+                        Change
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto p-1">
+                      {templates.slice(0, 8).map((template) => (
+                        <button
+                          key={template.id}
+                          onClick={() => setDialogTemplate(template)}
+                          className="p-3 text-left rounded-lg border border-border bg-secondary/30 hover:border-primary/50 hover:bg-secondary/50 transition-all"
+                        >
+                          <p className="text-sm font-medium text-foreground line-clamp-1">{template.name}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">{template.category}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <Button 
                   variant="gradient" 
                   className="w-full" 
                   onClick={handleRegenerateAI}
-                  disabled={isGenerating || !aiPrompt.trim()}
+                  disabled={isGenerating || (!aiPrompt.trim() && !dialogTemplate)}
                 >
                   {isGenerating ? (
                     <>
