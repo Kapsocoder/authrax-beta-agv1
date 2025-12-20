@@ -106,13 +106,14 @@ export default function Create() {
   const [editingPostId, setEditingPostId] = useState<string | null>(resumePostId || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-save draft when content is captured
+  // Auto-save draft when content is captured (but NOT when editing an existing post)
+  const isEditingExisting = initialMode === "edit" || initialMode === "resume";
   const autoSaveContent = mode === "url" || mode === "video" ? urlInput : capturedContent;
   const { hasAutoSaved, reset: resetAutoSave } = useAutoSaveDraft({
     content: autoSaveContent,
     sourceUrl: urlInput || undefined,
     sourceType: mode,
-    enabled: autoSaveContent.length > 10, // Only auto-save if there's meaningful content
+    enabled: autoSaveContent.length > 10 && !isEditingExisting, // Disable when editing existing
   });
 
   // Voice input with real-time transcription
