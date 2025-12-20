@@ -14,7 +14,8 @@ import {
   MicOff,
   Upload,
   LayoutTemplate,
-  ArrowRight
+  ArrowRight,
+  CheckCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -30,6 +31,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { usePosts } from "@/hooks/usePosts";
 import { useAIGeneration } from "@/hooks/useAIGeneration";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { useAutoSaveDraft } from "@/hooks/useAutoSaveDraft";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -80,7 +82,17 @@ export default function Create() {
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [urlInput, setUrlInput] = useState("");
+  const [manualSaved, setManualSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-save draft when content is captured
+  const autoSaveContent = mode === "url" || mode === "video" ? urlInput : capturedContent;
+  const { hasAutoSaved, reset: resetAutoSave } = useAutoSaveDraft({
+    content: autoSaveContent,
+    sourceUrl: urlInput || undefined,
+    sourceType: mode,
+    enabled: autoSaveContent.length > 10, // Only auto-save if there's meaningful content
+  });
 
   // Voice input with real-time transcription
   const {
@@ -676,7 +688,15 @@ Example:
             maxItems={6}
           />
 
-          {/* Generate Button */}
+          {/* Auto-save indicator */}
+          {hasAutoSaved && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span>Draft auto-saved</span>
+            </div>
+          )}
+
+          {/* Action Buttons */}
           <div className="flex gap-3">
             {!selectedTemplate && (
               <Button 
@@ -688,6 +708,36 @@ Example:
                 Choose Template
               </Button>
             )}
+            
+            {/* Manual Save Draft button */}
+            {hasCapturedContent && !manualSaved && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  const content = mode === "url" || mode === "video" ? urlInput : capturedContent;
+                  if (!content.trim()) {
+                    toast.error("Add some content first");
+                    return;
+                  }
+                  await createPost.mutateAsync({
+                    content,
+                    status: "draft",
+                    is_ai_generated: false,
+                    ai_prompt: urlInput ? `Source: ${urlInput}` : mode || undefined,
+                  });
+                  setManualSaved(true);
+                }}
+                disabled={createPost.isPending}
+              >
+                {createPost.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Save Draft
+              </Button>
+            )}
+            
             <Button
               variant="gradient"
               className="flex-1"
