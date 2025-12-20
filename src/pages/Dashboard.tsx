@@ -278,8 +278,8 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Trending Topics Header */}
-        <Card className="bg-card border-border mb-4">
+        {/* Trending Topics Section */}
+        <Card className="bg-card border-border mb-8">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
@@ -292,113 +292,112 @@ export default function Dashboard() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {trendingTopics.slice(0, 6).map((topic) => (
-                <button
-                  key={topic}
-                  onClick={() => navigate(`/create?topic=${encodeURIComponent(topic)}`)}
-                  className="px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors"
-                >
-                  {topic}
-                </button>
-              ))}
+          <CardContent className="space-y-6">
+            {/* Topic Tags */}
+            <div>
+              <div className="flex flex-wrap gap-2">
+                {trendingTopics.slice(0, 6).map((topic) => (
+                  <button
+                    key={topic}
+                    onClick={() => navigate(`/create?topic=${encodeURIComponent(topic)}`)}
+                    className="px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors"
+                  >
+                    {topic}
+                  </button>
+                ))}
+              </div>
+              <Button variant="link" className="mt-3 p-0 text-primary text-sm" onClick={() => navigate("/settings")}>
+                Manage your topics →
+              </Button>
             </div>
-            <Button variant="link" className="mt-4 p-0 text-primary" onClick={() => navigate("/settings")}>
-              Manage your topics →
-            </Button>
+
+            {/* News & Discussions Grid */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Latest News */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-semibold flex items-center gap-2">
+                    <Newspaper className="w-4 h-4 text-primary" />
+                    Latest News
+                  </h3>
+                  <Button variant="ghost" size="sm" className="text-xs text-primary h-auto p-1" onClick={() => navigate("/trending")}>
+                    More
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  {trendingLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (trendingData?.news?.slice(0, 5) || []).length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No news found for your topics</p>
+                  ) : (
+                    (trendingData?.news?.slice(0, 5) || []).map((news, index) => (
+                      <div 
+                        key={`${news.link}-${index}`}
+                        className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/50 cursor-pointer transition-all"
+                        onClick={() => window.open(news.link, "_blank")}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1 mb-1">
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{news.source}</Badge>
+                            </div>
+                            <h4 className="text-sm font-medium text-foreground line-clamp-2">{news.title}</h4>
+                            <p className="text-xs text-muted-foreground mt-1">{formatTimeAgo(news.pubDate)}</p>
+                          </div>
+                          <ExternalLink className="w-3 h-3 text-muted-foreground flex-shrink-0 mt-1" />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Trending Discussions */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-semibold flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-primary" />
+                    Trending Discussions
+                  </h3>
+                  <Button variant="ghost" size="sm" className="text-xs text-primary h-auto p-1" onClick={() => navigate("/trending")}>
+                    More
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  {trendingLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (trendingData?.posts?.slice(0, 5) || []).length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No discussions found for your topics</p>
+                  ) : (
+                    (trendingData?.posts?.slice(0, 5) || []).map((post, index) => (
+                      <div 
+                        key={`${post.permalink}-${index}`}
+                        className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/50 cursor-pointer transition-all"
+                        onClick={() => window.open(post.permalink, "_blank")}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 mb-1">r/{post.subreddit}</Badge>
+                            <h4 className="text-sm font-medium text-foreground line-clamp-2">{post.title}</h4>
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              <span>↑ {post.score}</span>
+                              <span>{post.numComments} comments</span>
+                            </div>
+                          </div>
+                          <ExternalLink className="w-3 h-3 text-muted-foreground flex-shrink-0 mt-1" />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
-
-        {/* Trending News & Posts Grid */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Latest News */}
-          <Card className="bg-card border-border">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Newspaper className="w-4 h-4 text-primary" />
-                  Latest News
-                </CardTitle>
-                <Button variant="ghost" size="sm" className="text-xs text-primary" onClick={() => navigate("/trending")}>
-                  More
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {trendingLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : (trendingData?.news?.slice(0, 5) || []).length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No news found for your topics</p>
-              ) : (
-                (trendingData?.news?.slice(0, 5) || []).map((news, index) => (
-                  <div 
-                    key={`${news.link}-${index}`}
-                    className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/50 cursor-pointer transition-all"
-                    onClick={() => window.open(news.link, "_blank")}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1 mb-1">
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{news.source}</Badge>
-                        </div>
-                        <h4 className="text-sm font-medium text-foreground line-clamp-2">{news.title}</h4>
-                        <p className="text-xs text-muted-foreground mt-1">{formatTimeAgo(news.pubDate)}</p>
-                      </div>
-                      <ExternalLink className="w-3 h-3 text-muted-foreground flex-shrink-0 mt-1" />
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Trending Discussions */}
-          <Card className="bg-card border-border">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <MessageCircle className="w-4 h-4 text-primary" />
-                  Trending Discussions
-                </CardTitle>
-                <Button variant="ghost" size="sm" className="text-xs text-primary" onClick={() => navigate("/trending")}>
-                  More
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {trendingLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : (trendingData?.posts?.slice(0, 5) || []).length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No discussions found for your topics</p>
-              ) : (
-                (trendingData?.posts?.slice(0, 5) || []).map((post, index) => (
-                  <div 
-                    key={`${post.permalink}-${index}`}
-                    className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/50 cursor-pointer transition-all"
-                    onClick={() => window.open(post.permalink, "_blank")}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 mb-1">r/{post.subreddit}</Badge>
-                        <h4 className="text-sm font-medium text-foreground line-clamp-2">{post.title}</h4>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          <span>↑ {post.score}</span>
-                          <span>{post.numComments} comments</span>
-                        </div>
-                      </div>
-                      <ExternalLink className="w-3 h-3 text-muted-foreground flex-shrink-0 mt-1" />
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Trending Templates */}
         <div className="mb-8">
