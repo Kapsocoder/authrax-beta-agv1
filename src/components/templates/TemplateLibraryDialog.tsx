@@ -131,177 +131,31 @@ export function TemplateLibraryDialog({
 
   const hasActiveFilters = selectedUserTypes.length > 0 || selectedThemes.length > 0 || selectedFormats.length > 0 || selectedObjectives.length > 0;
 
-  // Map template fields to filter codes
-  const getThemeCode = (theme: string): string => {
-    const themeMapping: Record<string, string> = {
-      "Leadership & Vision": "TL",
-      "Industry Trends": "TL",
-      "Business Performance": "SP",
-      "Authenticity": "PCD",
-      "Culture & Values": "CC",
-      "Growth Mindset": "PCD",
-      "Transparency": "CC",
-      "Social Proof": "SP",
-      "Thought Leadership": "TL",
-      "Community": "CR",
-      "Innovation": "TL",
-      "Resourcefulness": "PCD",
-      "Values": "CC",
-      "Strategy": "TL",
-      "Opportunity": "PSS",
-      "Operations": "TL",
-      "Collaboration": "CR",
-      "Work Habits": "PCD",
-      "Achievement": "SP",
-      "Differentiation": "PSS",
-      "Management": "TL",
-      "Trends": "TL",
-      "Recognition": "CC",
-      "Direction": "TL",
-      "Growth": "PCD",
-      "Change": "TL",
-      "Resilience": "PCD",
-      "Inclusion": "CC",
-      "Technology": "TL",
-      "Corporate": "TL",
-      "Journey": "PCD",
-      "Service": "PSS",
-      "Excellence": "TL",
-      "International": "TL",
-      "Development": "PCD",
-      "Integration": "TL",
-      "Review": "SP",
-      "Balance": "PCD",
-      "Learning": "EC",
-      "Success": "SP",
-      "Expertise": "EC",
-      "Skills": "EC",
-      "Identity": "PCD",
-      "Insights": "EC",
-      "Problem-Solving": "EC",
-      "Milestones": "SP",
-      "Networking": "CR",
-      "Reflection": "PCD",
-      "Opinion": "TL",
-      "Celebration": "CC",
-      "Future": "TL",
-      "Engagement": "CR",
-      "Tips": "EC",
-      "Questions": "CR",
-    };
-    return themeMapping[theme] || "TL";
-  };
-
-  const getFormatCode = (format: string): string => {
-    const formatMapping: Record<string, string> = {
-      "Story": "T",
-      "Opinion": "T",
-      "Data/Stats": "I",
-      "Behind-the-scenes": "V",
-      "Framework": "T",
-      "List": "T",
-      "Update": "T",
-      "Case Study": "T",
-      "Prediction": "T",
-      "Advice": "T",
-      "Announcement": "T",
-      "Manifesto": "T",
-      "Analysis": "T",
-      "Problem/Solution": "T",
-      "How-to": "A",
-      "Reflection": "T",
-      "Celebration": "I",
-      "Vision": "T",
-      "Commitment": "T",
-      "Journey": "T",
-      "Insight": "T",
-      "Summary": "T",
-      "Philosophy": "T",
-      "Lessons": "T",
-      "Personal": "T",
-      "Poll": "Po",
-      "Carousel": "C",
-      "Tutorial": "V",
-      "Tips": "T",
-      "Quick Win": "T",
-      "Discussion": "T",
-      "Question": "Po",
-    };
-    return formatMapping[format] || "T";
-  };
-
-  const getObjectiveCode = (objective: string): string => {
-    const objectiveMapping: Record<string, string> = {
-      "Thought Leadership": "PB",
-      "Engagement": "AE",
-      "Credibility Building": "RM",
-      "Community Building": "NB",
-      "Talent Attraction": "TA",
-      "Relatability": "PB",
-      "Investor Relations": "RM",
-      "Lead Generation": "LG",
-      "Authority Building": "PB",
-      "Network Building": "NB",
-      "Awareness": "PB",
-      "Inspiration": "AE",
-      "Employer Branding": "TA",
-      "Learning Share": "AE",
-      "Credibility": "RM",
-      "Personal Branding": "PB",
-      "Celebration": "AE",
-      "Positioning": "PB",
-      "Authority": "PB",
-      "Culture Building": "TA",
-      "Alignment": "NB",
-      "Influence": "PB",
-      "Trust Building": "RM",
-      "Values": "PB",
-      "Modernization": "PB",
-      "Trust": "RM",
-      "Brand Values": "PB",
-      "Standards": "RM",
-      "Perspective": "PB",
-      "Legacy": "PB",
-      "Expertise": "PB",
-      "Transparency": "RM",
-      "Authenticity": "PB",
-      "Portfolio Building": "PB",
-      "Discussion": "AE",
-      "Visibility": "PB",
-      "Milestone": "PB",
-      "Relationship Building": "NB",
-    };
-    return objectiveMapping[objective] || "PB";
-  };
-
   const filteredTemplates = useMemo(() => {
     return templates.filter((template) => {
       const matchesSearch = 
         template.name.toLowerCase().includes(search.toLowerCase()) ||
         template.description.toLowerCase().includes(search.toLowerCase()) ||
         template.category.toLowerCase().includes(search.toLowerCase()) ||
-        template.theme.toLowerCase().includes(search.toLowerCase()) ||
-        template.format.toLowerCase().includes(search.toLowerCase()) ||
-        template.objective.toLowerCase().includes(search.toLowerCase());
+        template.themes.some(t => t.toLowerCase().includes(search.toLowerCase())) ||
+        template.formats.some(f => f.toLowerCase().includes(search.toLowerCase())) ||
+        template.objectives.some(o => o.toLowerCase().includes(search.toLowerCase()));
       
       const matchesUserType = 
         selectedUserTypes.length === 0 || 
         selectedUserTypes.includes(template.userType);
 
-      const templateThemeCode = getThemeCode(template.theme);
       const matchesTheme = 
         selectedThemes.length === 0 || 
-        selectedThemes.includes(templateThemeCode);
+        template.themes.some(t => selectedThemes.includes(t));
 
-      const templateFormatCode = getFormatCode(template.format);
       const matchesFormat = 
         selectedFormats.length === 0 || 
-        selectedFormats.includes(templateFormatCode);
+        template.formats.some(f => selectedFormats.includes(f));
 
-      const templateObjectiveCode = getObjectiveCode(template.objective);
       const matchesObjective = 
         selectedObjectives.length === 0 || 
-        selectedObjectives.includes(templateObjectiveCode);
+        template.objectives.some(o => selectedObjectives.includes(o));
 
       return matchesSearch && matchesUserType && matchesTheme && matchesFormat && matchesObjective;
     });

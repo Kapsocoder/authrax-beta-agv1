@@ -24,7 +24,7 @@ import { ToneSelector, ToneOption } from "@/components/studio/ToneSelector";
 import { TrendingTemplates } from "@/components/templates/TrendingTemplates";
 import { TemplateLibraryDialog } from "@/components/templates/TemplateLibraryDialog";
 import { TemplateCard } from "@/components/templates/TemplateCard";
-import { Template, getTemplateById } from "@/data/templates";
+import { Template, templates } from "@/data/templates";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { usePosts } from "@/hooks/usePosts";
@@ -73,7 +73,7 @@ export default function Create() {
   const [generatedContent, setGeneratedContent] = useState("");
   const [selectedTone, setSelectedTone] = useState<ToneOption>("professional");
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
-    initialTemplateId ? getTemplateById(initialTemplateId) || null : null
+    initialTemplateId ? templates.find(t => t.id === initialTemplateId) || null : null
   );
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
   const [activeTab, setActiveTab] = useState("write");

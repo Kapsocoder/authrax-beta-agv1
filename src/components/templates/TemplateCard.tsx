@@ -1,4 +1,4 @@
-import { Template, themeColors, formatColors, objectiveColors } from "@/data/templates";
+import { Template, themeColors, formatColors, objectiveColors, themeLabels, formatLabels, objectiveLabels } from "@/data/templates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Briefcase, User, TrendingUp } from "lucide-react";
@@ -80,24 +80,33 @@ export function TemplateCard({ template, onClick, selected, compact, showBadges 
         </p>
         {showBadges && (
           <div className="flex flex-wrap gap-1">
-            <Badge 
-              variant="outline" 
-              className={cn("text-xs border", themeColors[template.theme] || "bg-muted/50 text-muted-foreground")}
-            >
-              {template.theme}
-            </Badge>
-            <Badge 
-              variant="outline" 
-              className={cn("text-xs border", formatColors[template.format] || "bg-muted/50 text-muted-foreground")}
-            >
-              {template.format}
-            </Badge>
-            <Badge 
-              variant="outline" 
-              className={cn("text-xs border", objectiveColors[template.objective] || "bg-muted/50 text-muted-foreground")}
-            >
-              {template.objective}
-            </Badge>
+            {template.themes.slice(0, 2).map((theme) => (
+              <Badge 
+                key={theme}
+                variant="outline" 
+                className={cn("text-xs border", themeColors[theme] || "bg-muted/50 text-muted-foreground")}
+              >
+                {themeLabels[theme] || theme}
+              </Badge>
+            ))}
+            {template.formats.slice(0, 1).map((format) => (
+              <Badge 
+                key={format}
+                variant="outline" 
+                className={cn("text-xs border", formatColors[format] || "bg-muted/50 text-muted-foreground")}
+              >
+                {formatLabels[format] || format}
+              </Badge>
+            ))}
+            {template.objectives.slice(0, 1).map((objective) => (
+              <Badge 
+                key={objective}
+                variant="outline" 
+                className={cn("text-xs border", objectiveColors[objective] || "bg-muted/50 text-muted-foreground")}
+              >
+                {objectiveLabels[objective] || objective}
+              </Badge>
+            ))}
           </div>
         )}
       </CardContent>
