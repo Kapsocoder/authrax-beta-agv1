@@ -8,12 +8,14 @@ export interface VoiceProfile {
   user_id: string;
   tone: string | null;
   writing_style: string | null;
-  emoji_usage: string;
-  sentence_length: string;
-  formatting_patterns: string[];
-  sample_posts: string[];
+  emoji_usage: string | null;
+  sentence_length: string | null;
+  formatting_patterns: string[] | null;
+  sample_posts: string[] | null;
   analysis_summary: string | null;
-  is_trained: boolean;
+  system_prompt: string | null;
+  source_type: string | null;
+  is_trained: boolean | null;
   trained_at: string | null;
   created_at: string;
   updated_at: string;
@@ -38,6 +40,29 @@ export function useVoiceProfile() {
       return data as VoiceProfile | null;
     },
     enabled: !!user?.id,
+  });
+
+  const updateVoiceProfile = useMutation({
+    mutationFn: async (updates: Partial<VoiceProfile>) => {
+      if (!user?.id) throw new Error("Not authenticated");
+      
+      const { data, error } = await supabase
+        .from("voice_profiles")
+        .update(updates)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data as VoiceProfile;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["voice-profile", user?.id] });
+      toast.success("Voice profile updated!");
+    },
+    onError: (error) => {
+      toast.error("Failed to update voice profile: " + error.message);
+    },
   });
 
   const analyzeVoice = useMutation({
@@ -67,6 +92,7 @@ export function useVoiceProfile() {
   return {
     voiceProfile: voiceProfileQuery.data,
     isLoading: voiceProfileQuery.isLoading,
+    updateVoiceProfile,
     analyzeVoice,
   };
 }

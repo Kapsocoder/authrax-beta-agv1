@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, FileText, Link, Brain, Zap, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { Sparkles, FileText, Link, Brain, Zap, ArrowRight, Loader2, CheckCircle2, Edit3, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,15 +8,19 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useVoiceProfile } from "@/hooks/useVoiceProfile";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 
 export default function Voice() {
   const { signOut } = useAuth();
-  const { voiceProfile, isLoading, analyzeVoice } = useVoiceProfile();
+  const { voiceProfile, isLoading, analyzeVoice, updateVoiceProfile } = useVoiceProfile();
   const [linkedInUrl, setLinkedInUrl] = useState("");
   const [pastedPosts, setPastedPosts] = useState("");
+  const [isEditingPrompt, setIsEditingPrompt] = useState(false);
+  const [editedPrompt, setEditedPrompt] = useState("");
 
   const handleAnalyze = async () => {
     if (!pastedPosts.trim()) {
+      toast.error("Please paste some posts to analyze");
       return;
     }
 
@@ -27,11 +31,27 @@ export default function Voice() {
       .filter(p => p.length > 50); // Only keep substantial posts
 
     if (posts.length < 2) {
+      toast.error("Please provide at least 2 substantial posts (50+ characters each)");
       return;
     }
 
     await analyzeVoice.mutateAsync(posts);
     setPastedPosts("");
+  };
+
+  const handleEditPrompt = () => {
+    setEditedPrompt(voiceProfile?.system_prompt || "");
+    setIsEditingPrompt(true);
+  };
+
+  const handleSavePrompt = async () => {
+    await updateVoiceProfile.mutateAsync({ system_prompt: editedPrompt });
+    setIsEditingPrompt(false);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingPrompt(false);
+    setEditedPrompt("");
   };
 
   const voiceScore = voiceProfile?.is_trained ? 75 + Math.min(25, (voiceProfile.sample_posts?.length || 0) * 5) : 0;
@@ -162,7 +182,7 @@ export default function Voice() {
         <div className="flex justify-center mb-8">
           <Button
             variant="gradient"
-            size="xl"
+            size="lg"
             onClick={handleAnalyze}
             disabled={analyzeVoice.isPending || !pastedPosts.trim()}
             className="gap-2"
@@ -183,13 +203,13 @@ export default function Voice() {
         </div>
 
         {/* Voice Traits */}
-        <Card className="bg-card border-border">
+        <Card className="bg-card border-border mb-8">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Brain className="w-5 h-5 text-primary" />
               Your Voice Profile
               {voiceProfile?.is_trained && (
-                <CheckCircle2 className="w-4 h-4 text-green-500 ml-2" />
+                <CheckCircle2 className="w-4 h-4 text-success ml-2" />
               )}
             </CardTitle>
             <CardDescription>
@@ -223,6 +243,72 @@ export default function Voice() {
                     </span>
                   ))}
                 </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* System Prompt Editor */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Edit3 className="w-5 h-5 text-primary" />
+                  System Prompt
+                </CardTitle>
+                <CardDescription>
+                  The instructions that guide AI generation in your voice
+                </CardDescription>
+              </div>
+              {!isEditingPrompt && voiceProfile?.system_prompt && (
+                <Button variant="outline" size="sm" onClick={handleEditPrompt}>
+                  <Edit3 className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isEditingPrompt ? (
+              <div className="space-y-4">
+                <Textarea
+                  value={editedPrompt}
+                  onChange={(e) => setEditedPrompt(e.target.value)}
+                  className="min-h-[200px]"
+                  placeholder="Enter your custom system prompt..."
+                />
+                <div className="flex gap-2 justify-end">
+                  <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
+                    <X className="w-4 h-4 mr-2" />
+                    Cancel
+                  </Button>
+                  <Button 
+                    variant="gradient" 
+                    size="sm" 
+                    onClick={handleSavePrompt}
+                    disabled={updateVoiceProfile.isPending}
+                  >
+                    {updateVoiceProfile.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-2" />
+                    )}
+                    Save
+                  </Button>
+                </div>
+              </div>
+            ) : voiceProfile?.system_prompt ? (
+              <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                <pre className="text-sm text-foreground whitespace-pre-wrap font-mono">
+                  {voiceProfile.system_prompt}
+                </pre>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Brain className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                <p className="text-sm mb-2">No system prompt generated yet</p>
+                <p className="text-xs">Train your voice profile to generate a custom prompt</p>
               </div>
             )}
           </CardContent>
