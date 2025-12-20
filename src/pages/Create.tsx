@@ -568,7 +568,68 @@ Example:
             </Card>
           )}
 
-          {/* No mode selected - show captured content if any */}
+          {/* No mode selected - show "What's on your mind?" options */}
+          {!mode && !hasCapturedContent && (
+            <Card>
+              <CardHeader>
+                <CardTitle>What's on your mind?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
+                    onClick={() => setMode("voice")}
+                  >
+                    <Mic className="w-5 h-5 text-primary" />
+                    <span className="text-xs">Capture Idea</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
+                    onClick={() => setMode("draft")}
+                  >
+                    <span className="text-lg">✍️</span>
+                    <span className="text-xs">Draft Post</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
+                    onClick={() => navigate("/schedule")}
+                  >
+                    <Clock className="w-5 h-5 text-primary" />
+                    <span className="text-xs">Schedule</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
+                    onClick={() => setMode("url")}
+                  >
+                    <span className="text-lg">📰</span>
+                    <span className="text-xs">Import Link</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
+                    onClick={() => setMode("video")}
+                  >
+                    <span className="text-lg">🎥</span>
+                    <span className="text-xs">From Video</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
+                    onClick={() => setMode("pdf")}
+                  >
+                    <Upload className="w-5 h-5 text-primary" />
+                    <span className="text-xs">Repurpose PDF</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* No mode selected but has content - show content editor */}
           {!mode && hasCapturedContent && (
             <Card>
               <CardHeader>
