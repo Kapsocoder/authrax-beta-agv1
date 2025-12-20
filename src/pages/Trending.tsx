@@ -23,6 +23,7 @@ export default function Trending() {
   
   const [searchInput, setSearchInput] = useState("");
   const [searchTags, setSearchTags] = useState<string[]>([]);
+  const [usePreselectedTopics, setUsePreselectedTopics] = useState(true); // Track if preselected should be used
   const [selectedPost, setSelectedPost] = useState<TrendingPost | null>(null);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [postsPage, setPostsPage] = useState(1);
@@ -33,26 +34,45 @@ export default function Trending() {
     .filter(t => t.is_active)
     .map(t => t.name);
   
-  // Combine search tags with user's preferred topics
-  const allTopics = [...searchTags, ...activeTopicNames];
+  // Use search tags only when user has searched, otherwise use preselected topics
+  const topicsToFetch = searchTags.length > 0 
+    ? searchTags  // User searched - only use search tags
+    : (usePreselectedTopics ? activeTopicNames : []); // Default to preselected
   
   // Fetch trending data
-  const { data: trendingData, isLoading, refetch, isRefetching } = useTrending(allTopics);
+  const { data: trendingData, isLoading, refetch, isRefetching } = useTrending(topicsToFetch);
   
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && searchInput.trim()) {
       e.preventDefault();
       if (!searchTags.includes(searchInput.trim())) {
         setSearchTags([...searchTags, searchInput.trim()]);
+        // Disable preselected topics when user starts searching
+        setUsePreselectedTopics(false);
       }
       setSearchInput("");
     } else if (e.key === "Backspace" && !searchInput && searchTags.length > 0) {
-      setSearchTags(searchTags.slice(0, -1));
+      const newTags = searchTags.slice(0, -1);
+      setSearchTags(newTags);
+      // Re-enable preselected topics if all search tags are removed
+      if (newTags.length === 0) {
+        setUsePreselectedTopics(true);
+      }
     }
   };
 
   const removeTag = (tagToRemove: string) => {
-    setSearchTags(searchTags.filter(tag => tag !== tagToRemove));
+    const newTags = searchTags.filter(tag => tag !== tagToRemove);
+    setSearchTags(newTags);
+    // Re-enable preselected topics if all search tags are removed
+    if (newTags.length === 0) {
+      setUsePreselectedTopics(true);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchTags([]);
+    setUsePreselectedTopics(true);
   };
 
   const handleCreatePost = (content: string) => {
@@ -136,16 +156,27 @@ export default function Trending() {
 
           {/* Pre-selected Topics */}
           {activeTopicNames.length > 0 && (
-            <Card className="border-primary/20">
+            <Card className={`border-primary/20 ${!usePreselectedTopics && searchTags.length > 0 ? 'opacity-50' : ''}`}>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">
-                  Your Topics of Interest
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-muted-foreground">
+                    Your Topics of Interest {searchTags.length > 0 && !usePreselectedTopics && "(disabled while searching)"}
+                  </CardTitle>
+                  {searchTags.length > 0 && (
+                    <Button variant="ghost" size="sm" className="text-xs" onClick={clearSearch}>
+                      Clear search & restore
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
                   {activeTopicNames.map((topic) => (
-                    <Badge key={topic} variant="outline" className="border-primary/50">
+                    <Badge 
+                      key={topic} 
+                      variant="outline" 
+                      className={`border-primary/50 ${!usePreselectedTopics && searchTags.length > 0 ? 'line-through' : ''}`}
+                    >
                       {topic}
                     </Badge>
                   ))}
