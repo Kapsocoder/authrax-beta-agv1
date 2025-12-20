@@ -1,4 +1,12 @@
-import { Template, themeColors, formatColors, objectiveColors, themeLabels, formatLabels, objectiveLabels } from "@/data/templates";
+import { Template } from "@/hooks/useTemplates";
+import { 
+  themeColors, 
+  formatColors, 
+  objectiveColors, 
+  themeLabels, 
+  formatLabels, 
+  objectiveLabels 
+} from "@/data/templateConstants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Briefcase, User, TrendingUp } from "lucide-react";

@@ -25,7 +25,7 @@ import { ToneSelector, ToneOption } from "@/components/studio/ToneSelector";
 import { TrendingTemplates } from "@/components/templates/TrendingTemplates";
 import { TemplateLibraryDialog } from "@/components/templates/TemplateLibraryDialog";
 import { TemplateCard } from "@/components/templates/TemplateCard";
-import { Template, templates } from "@/data/templates";
+import { Template, useTemplate, useTemplates } from "@/hooks/useTemplates";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { usePosts } from "@/hooks/usePosts";
@@ -63,6 +63,7 @@ export default function Create() {
   const { profile } = useProfile();
   const { createPost, updatePost } = usePosts();
   const { generatePost, isGenerating } = useAIGeneration();
+  const { data: allTemplates = [] } = useTemplates();
   
   // Mode from navigation state
   const initialMode = (location.state?.mode as StudioMode | "edit" | "resume" | "template") || null;
@@ -94,9 +95,7 @@ export default function Create() {
     initialMode === "edit" ? (location.state?.content as string || "") : ""
   );
   const [selectedTone, setSelectedTone] = useState<ToneOption>("professional");
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
-    initialTemplateId ? templates.find(t => t.id === initialTemplateId) || null : null
-  );
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
   const [showTemplatePreview, setShowTemplatePreview] = useState<Template | null>(null);
   const [activeTab, setActiveTab] = useState("write");
@@ -129,6 +128,16 @@ export default function Create() {
   } = useVoiceInput({
     onError: (error) => toast.error(error),
   });
+
+  // Set initial template from URL/state once templates are loaded
+  useEffect(() => {
+    if (initialTemplateId && allTemplates.length > 0 && !selectedTemplate) {
+      const found = allTemplates.find(t => t.id === initialTemplateId);
+      if (found) {
+        setSelectedTemplate(found);
+      }
+    }
+  }, [initialTemplateId, allTemplates, selectedTemplate]);
 
   // Update captured content as voice transcribes
   useEffect(() => {
@@ -478,7 +487,7 @@ export default function Create() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto p-1">
-                      {templates.slice(0, 8).map((template) => (
+                      {allTemplates.slice(0, 8).map((template) => (
                         <button
                           key={template.id}
                           onClick={() => setDialogTemplate(template)}

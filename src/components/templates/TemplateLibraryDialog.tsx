@@ -1,7 +1,6 @@
 import { useState, useMemo, useRef } from "react";
+import { useTemplates, Template } from "@/hooks/useTemplates";
 import { 
-  templates, 
-  Template, 
   userTypeLabels,
   themeLabels,
   formatLabels,
@@ -14,15 +13,13 @@ import {
   themeFilters,
   formatFilters,
   objectiveFilters,
-  themeColors, 
-  formatColors, 
-  objectiveColors 
-} from "@/data/templates";
+} from "@/data/templateConstants";
 import { TemplateCard } from "./TemplateCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -290,6 +287,8 @@ export function TemplateLibraryDialog({
   const [selectedObjectives, setSelectedObjectives] = useState<string[]>([]);
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
 
+  const { data: templates = [], isLoading } = useTemplates();
+
   const hasActiveFilters = selectedUserTypes.length > 0 || selectedThemes.length > 0 || selectedFormats.length > 0 || selectedObjectives.length > 0;
 
   const filteredTemplates = useMemo(() => {
@@ -320,7 +319,7 @@ export function TemplateLibraryDialog({
 
       return matchesSearch && matchesUserType && matchesTheme && matchesFormat && matchesObjective;
     });
-  }, [search, selectedUserTypes, selectedThemes, selectedFormats, selectedObjectives]);
+  }, [templates, search, selectedUserTypes, selectedThemes, selectedFormats, selectedObjectives]);
 
   const toggleFilter = (
     value: string, 
@@ -437,10 +436,16 @@ export function TemplateLibraryDialog({
             <ScrollArea className="flex-1 px-6 py-4">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-muted-foreground">
-                  {filteredTemplates.length} template{filteredTemplates.length !== 1 ? 's' : ''} found
+                  {isLoading ? "Loading..." : `${filteredTemplates.length} template${filteredTemplates.length !== 1 ? 's' : ''} found`}
                 </p>
               </div>
-              {filteredTemplates.length === 0 ? (
+              {isLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-32 rounded-lg" />
+                  ))}
+                </div>
+              ) : filteredTemplates.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <p>No templates found matching your filters.</p>
                   {hasActiveFilters && (
