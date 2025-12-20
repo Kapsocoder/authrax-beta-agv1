@@ -5,20 +5,30 @@ import { toast } from "sonner";
 
 interface GeneratePostParams {
   prompt: string;
-  type: "topic" | "url" | "notes" | "freeform";
+  type: "topic" | "url" | "voice" | "repurpose" | "notes" | "freeform";
+  tone?: string;
+  sourceUrl?: string;
+  voiceTranscript?: string;
 }
 
 export function useAIGeneration() {
   const { user, session } = useAuth();
 
   const generatePost = useMutation({
-    mutationFn: async ({ prompt, type }: GeneratePostParams) => {
+    mutationFn: async ({ prompt, type, tone, sourceUrl, voiceTranscript }: GeneratePostParams) => {
       if (!session?.access_token) {
         throw new Error("Not authenticated");
       }
       
       const { data, error } = await supabase.functions.invoke("generate-post", {
-        body: { prompt, type, userId: user?.id },
+        body: { 
+          prompt, 
+          type, 
+          userId: user?.id,
+          tone: tone || "professional",
+          sourceUrl,
+          voiceTranscript,
+        },
       });
       
       if (error) throw error;
