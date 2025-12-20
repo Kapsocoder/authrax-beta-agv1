@@ -65,24 +65,45 @@ export default function Create() {
   const { generatePost, isGenerating } = useAIGeneration();
   
   // Mode from navigation state
-  const initialMode = (location.state?.mode as StudioMode) || null;
+  const initialMode = (location.state?.mode as StudioMode | "edit" | "resume" | "template") || null;
   const initialTopic = searchParams.get("topic") || "";
-  const initialTemplateId = searchParams.get("template") || "";
+  const initialTemplateId = searchParams.get("template") || location.state?.templateId as string || "";
   const scheduledContent = location.state?.content as string | undefined;
+  const resumePostId = location.state?.postId as string | undefined;
+  const resumeSourceType = location.state?.sourceType as string | undefined;
 
-  const [mode, setMode] = useState<StudioMode>(initialMode);
-  const [capturedContent, setCapturedContent] = useState("");
-  const [generatedContent, setGeneratedContent] = useState("");
+  // Handle resume mode - convert sourceType back to mode
+  const getInitialModeFromResume = (): StudioMode => {
+    if (initialMode === "resume" && resumeSourceType) {
+      if (resumeSourceType.includes("voice")) return "voice";
+      if (resumeSourceType.includes("url") || resumeSourceType.includes("Source:")) return "url";
+      if (resumeSourceType.includes("video")) return "video";
+      if (resumeSourceType.includes("pdf")) return "pdf";
+      if (resumeSourceType === "draft") return "draft";
+    }
+    // template mode should go to studio (null mode) but with template pre-selected
+    return initialMode === "edit" || initialMode === "resume" || initialMode === "template" ? null : (initialMode as StudioMode);
+  };
+
+  const [mode, setMode] = useState<StudioMode>(getInitialModeFromResume());
+  const [capturedContent, setCapturedContent] = useState(
+    initialMode === "resume" ? (location.state?.content as string || "") : ""
+  );
+  const [generatedContent, setGeneratedContent] = useState(
+    initialMode === "edit" ? (location.state?.content as string || "") : ""
+  );
   const [selectedTone, setSelectedTone] = useState<ToneOption>("professional");
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
     initialTemplateId ? templates.find(t => t.id === initialTemplateId) || null : null
   );
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
+  const [showTemplatePreview, setShowTemplatePreview] = useState<Template | null>(null);
   const [activeTab, setActiveTab] = useState("write");
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [urlInput, setUrlInput] = useState("");
   const [manualSaved, setManualSaved] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(resumePostId || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-save draft when content is captured
@@ -228,6 +249,19 @@ export default function Create() {
   const handleTemplateSelect = (template: Template) => {
     setSelectedTemplate(template);
     setShowTemplateLibrary(false);
+    setShowTemplatePreview(null);
+  };
+
+  // For studio view - show preview first
+  const handleTemplatePreview = (template: Template) => {
+    setShowTemplatePreview(template);
+  };
+
+  const handleConfirmTemplateFromPreview = () => {
+    if (showTemplatePreview) {
+      setSelectedTemplate(showTemplatePreview);
+      setShowTemplatePreview(null);
+    }
   };
 
   const handleRegenerateAI = async () => {
@@ -682,10 +716,11 @@ Example:
             </Card>
           )}
 
-          {/* Trending Templates */}
+          {/* Trending Templates - show preview on click in Studio */}
           <TrendingTemplates 
-            onSelectTemplate={handleTemplateSelect}
+            onSelectTemplate={handleTemplatePreview}
             maxItems={6}
+            showPreviewFirst
           />
 
           {/* Auto-save indicator */}
@@ -766,6 +801,76 @@ Example:
           onOpenChange={setShowTemplateLibrary}
           onSelectTemplate={handleTemplateSelect}
         />
+
+        {/* Template Preview Dialog - for studio view */}
+        {showTemplatePreview && (
+          <Dialog open={!!showTemplatePreview} onOpenChange={(open) => !open && setShowTemplatePreview(null)}>
+            <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 bg-background border-border">
+              <div className="flex flex-col h-full">
+                {/* Header */}
+                <div className="px-6 pt-6 pb-4 border-b border-border">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex-1">
+                      <DialogTitle className="text-xl text-foreground">{showTemplatePreview.name}</DialogTitle>
+                      <DialogDescription className="text-muted-foreground">
+                        {showTemplatePreview.category}
+                      </DialogDescription>
+                    </div>
+                    {showTemplatePreview.isTrending && (
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary/20 text-primary">
+                        Trending
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto px-6 py-6">
+                  <div className="space-y-6">
+                    <p className="text-foreground">{showTemplatePreview.description}</p>
+
+                    {/* Structure */}
+                    <div className="p-5 rounded-xl bg-primary/10 border border-primary/20">
+                      <div className="flex items-center gap-2 mb-3">
+                        <LayoutTemplate className="w-5 h-5 text-primary" />
+                        <h3 className="font-semibold text-foreground">Post Structure</h3>
+                      </div>
+                      <div className="space-y-3">
+                        {showTemplatePreview.structure.split("→").map((step, index) => (
+                          <div key={index} className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                              <span className="text-xs font-bold text-primary">{index + 1}</span>
+                            </div>
+                            <p className="text-foreground">{step.trim()}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Example */}
+                    {showTemplatePreview.example && (
+                      <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+                        <h3 className="text-sm font-medium text-muted-foreground mb-2">Example</h3>
+                        <p className="text-foreground text-sm whitespace-pre-wrap">{showTemplatePreview.example}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="px-6 py-4 border-t border-border flex gap-3">
+                  <Button variant="outline" className="flex-1" onClick={() => setShowTemplatePreview(null)}>
+                    Back
+                  </Button>
+                  <Button variant="gradient" className="flex-1" onClick={handleConfirmTemplateFromPreview}>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Use This Template
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </AppLayout>
   );

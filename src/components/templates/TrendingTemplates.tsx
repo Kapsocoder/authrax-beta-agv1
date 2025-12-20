@@ -11,12 +11,14 @@ interface TrendingTemplatesProps {
   onSelectTemplate?: (template: Template) => void;
   showViewAll?: boolean;
   maxItems?: number;
+  showPreviewFirst?: boolean; // If true, onSelectTemplate is called on click (for preview), otherwise navigates
 }
 
 export function TrendingTemplates({ 
   onSelectTemplate, 
   showViewAll = true,
-  maxItems = 6 
+  maxItems = 6,
+  showPreviewFirst = false
 }: TrendingTemplatesProps) {
   const navigate = useNavigate();
   const [showLibrary, setShowLibrary] = useState(false);
@@ -24,10 +26,31 @@ export function TrendingTemplates({
 
   const handleTemplateClick = (template: Template) => {
     if (onSelectTemplate) {
+      // If we have a callback, use it (for studio view with preview, or direct selection)
       onSelectTemplate(template);
     } else {
-      // Navigate to create with template
-      navigate(`/create?template=${template.id}`);
+      // No callback - navigate to create with template pre-selected
+      navigate("/create", { 
+        state: { 
+          mode: "template",
+          templateId: template.id 
+        }
+      });
+    }
+  };
+
+  const handleLibrarySelect = (template: Template) => {
+    setShowLibrary(false);
+    if (onSelectTemplate) {
+      onSelectTemplate(template);
+    } else {
+      // Navigate to studio with template pre-selected
+      navigate("/create", { 
+        state: { 
+          mode: "template",
+          templateId: template.id 
+        }
+      });
     }
   };
 
@@ -69,10 +92,7 @@ export function TrendingTemplates({
       <TemplateLibraryDialog 
         open={showLibrary} 
         onOpenChange={setShowLibrary}
-        onSelectTemplate={(template) => {
-          handleTemplateClick(template);
-          setShowLibrary(false);
-        }}
+        onSelectTemplate={handleLibrarySelect}
       />
     </>
   );
