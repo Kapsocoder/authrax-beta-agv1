@@ -156,7 +156,7 @@ export default function Dashboard() {
   const postsThisWeek = posts?.filter(p => {
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
-    return new Date(p.created_at) > weekAgo;
+    return p.status === "published" && new Date(p.published_at || p.created_at) > weekAgo;
   }).length || 0;
 
   const scheduledCount = posts?.filter(p => p.status === "scheduled").length || 0;
