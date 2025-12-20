@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getTrendingTemplates, Template } from "@/data/templates";
+import { useTrendingTemplates, Template } from "@/hooks/useTemplates";
 import { TemplateCard } from "./TemplateCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LayoutTemplate, ArrowRight } from "lucide-react";
 import { TemplateLibraryDialog } from "./TemplateLibraryDialog";
 
@@ -11,7 +12,7 @@ interface TrendingTemplatesProps {
   onSelectTemplate?: (template: Template) => void;
   showViewAll?: boolean;
   maxItems?: number;
-  showPreviewFirst?: boolean; // If true, onSelectTemplate is called on click (for preview), otherwise navigates
+  showPreviewFirst?: boolean;
 }
 
 export function TrendingTemplates({ 
@@ -22,14 +23,12 @@ export function TrendingTemplates({
 }: TrendingTemplatesProps) {
   const navigate = useNavigate();
   const [showLibrary, setShowLibrary] = useState(false);
-  const trendingTemplates = getTrendingTemplates().slice(0, maxItems);
+  const { data: trendingTemplates, isLoading } = useTrendingTemplates(maxItems);
 
   const handleTemplateClick = (template: Template) => {
     if (onSelectTemplate) {
-      // If we have a callback, use it (for studio view with preview, or direct selection)
       onSelectTemplate(template);
     } else {
-      // No callback - navigate to create with template pre-selected
       navigate("/create", { 
         state: { 
           mode: "template",
@@ -44,7 +43,6 @@ export function TrendingTemplates({
     if (onSelectTemplate) {
       onSelectTemplate(template);
     } else {
-      // Navigate to studio with template pre-selected
       navigate("/create", { 
         state: { 
           mode: "template",
@@ -77,15 +75,23 @@ export function TrendingTemplates({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {trendingTemplates.map((template) => (
-              <TemplateCard
-                key={template.id}
-                template={template}
-                onClick={() => handleTemplateClick(template)}
-              />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {Array.from({ length: maxItems }).map((_, i) => (
+                <Skeleton key={i} className="h-32 rounded-lg" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {trendingTemplates.map((template) => (
+                <TemplateCard
+                  key={template.id}
+                  template={template}
+                  onClick={() => handleTemplateClick(template)}
+                />
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
