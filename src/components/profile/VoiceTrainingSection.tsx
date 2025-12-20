@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Sparkles, FileText, Brain, Zap, Loader2, CheckCircle2, Edit3, Save, X, ChevronDown, ChevronUp, Trash2, Plus } from "lucide-react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
+import { Sparkles, FileText, Brain, Zap, Loader2, CheckCircle2, Edit3, Save, X, ChevronDown, ChevronUp, Trash2, Plus, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,20 +8,29 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useVoiceProfile } from "@/hooks/useVoiceProfile";
 import { toast } from "sonner";
 
-export function VoiceTrainingSection() {
+export interface VoiceTrainingSectionRef {
+  expand: () => void;
+}
+
+export const VoiceTrainingSection = forwardRef<VoiceTrainingSectionRef>(function VoiceTrainingSection(_, ref) {
   const { voiceProfile, isLoading, analyzeVoice, updateVoiceProfile } = useVoiceProfile();
   const [currentPost, setCurrentPost] = useState("");
-  const [savedPosts, setSavedPosts] = useState<string[]>(voiceProfile?.sample_posts || []);
+  const [savedPosts, setSavedPosts] = useState<string[]>([]);
   const [isEditingPrompt, setIsEditingPrompt] = useState(false);
   const [editedPrompt, setEditedPrompt] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Expose expand method via ref
+  useImperativeHandle(ref, () => ({
+    expand: () => setIsExpanded(true),
+  }));
+
   // Sync saved posts with voice profile when it loads
-  useState(() => {
+  useEffect(() => {
     if (voiceProfile?.sample_posts) {
       setSavedPosts(voiceProfile.sample_posts);
     }
-  });
+  }, [voiceProfile?.sample_posts]);
 
   const handleSavePost = () => {
     if (!currentPost.trim()) {
@@ -49,8 +58,8 @@ export function VoiceTrainingSection() {
   };
 
   const handleAnalyze = async () => {
-    if (savedPosts.length < 2) {
-      toast.error("Please save at least 2 posts to analyze");
+    if (savedPosts.length < 3) {
+      toast.error("Please save at least 3 posts to analyze your voice");
       return;
     }
 
@@ -153,30 +162,9 @@ export function VoiceTrainingSection() {
             {/* Saved Posts Cards */}
             {savedPosts.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-foreground text-sm">
-                    Saved Posts ({savedPosts.length})
-                  </h4>
-                  <Button
-                    variant="gradient"
-                    size="sm"
-                    onClick={handleAnalyze}
-                    disabled={analyzeVoice.isPending || savedPosts.length < 2}
-                    className="gap-2"
-                  >
-                    {analyzeVoice.isPending ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4" />
-                        Analyze ({savedPosts.length} posts)
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <h4 className="font-medium text-foreground text-sm">
+                  Saved Posts ({savedPosts.length})
+                </h4>
                 
                 <div className="grid gap-3">
                   {savedPosts.map((post, index) => (
@@ -217,93 +205,6 @@ export function VoiceTrainingSection() {
               </div>
             )}
 
-            {/* Voice Traits - Show after analysis */}
-            {voiceProfile?.is_trained && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Brain className="w-5 h-5 text-primary" />
-                  <h4 className="font-medium text-foreground">Your Voice Profile</h4>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {voiceTraits.map((trait) => (
-                    <div key={trait.label} className="p-3 rounded-lg bg-secondary/50 border border-border">
-                      <h5 className="text-xs font-medium text-muted-foreground mb-1">{trait.label}</h5>
-                      <p className="text-sm text-foreground capitalize">{trait.value}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* AI Summary */}
-            {voiceProfile?.analysis_summary && (
-              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                <h4 className="font-medium text-foreground mb-2 text-sm">AI Summary</h4>
-                <p className="text-sm text-muted-foreground">{voiceProfile.analysis_summary}</p>
-              </div>
-            )}
-
-            {/* System Prompt */}
-            {voiceProfile?.is_trained && (
-              <div className="p-4 rounded-xl bg-secondary/30 border border-border">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Edit3 className="w-5 h-5 text-primary" />
-                    <h4 className="font-medium text-foreground">System Prompt</h4>
-                  </div>
-                  {!isEditingPrompt && voiceProfile?.system_prompt && (
-                    <Button variant="ghost" size="sm" onClick={handleEditPrompt}>
-                      <Edit3 className="w-4 h-4 mr-1" />
-                      Edit
-                    </Button>
-                  )}
-                </div>
-                
-                {isEditingPrompt ? (
-                  <div className="space-y-3">
-                    <Textarea
-                      value={editedPrompt}
-                      onChange={(e) => setEditedPrompt(e.target.value)}
-                      className="min-h-[120px] text-foreground"
-                      placeholder="Enter your custom system prompt..."
-                    />
-                    <div className="flex gap-2 justify-end">
-                      <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
-                        <X className="w-4 h-4 mr-1" />
-                        Cancel
-                      </Button>
-                      <Button 
-                        variant="gradient" 
-                        size="sm" 
-                        onClick={handleSavePrompt}
-                        disabled={updateVoiceProfile.isPending}
-                      >
-                        {updateVoiceProfile.isPending ? (
-                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                        ) : (
-                          <Save className="w-4 h-4 mr-1" />
-                        )}
-                        Save
-                      </Button>
-                    </div>
-                  </div>
-                ) : voiceProfile?.system_prompt ? (
-                  <pre className="text-sm text-foreground whitespace-pre-wrap font-mono p-3 rounded-lg bg-muted/50 border border-border max-h-32 overflow-y-auto">
-                    {voiceProfile.system_prompt}
-                  </pre>
-                ) : (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <Brain className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Analyze your posts to generate a system prompt</p>
-                  </div>
-                )}
-                
-                <p className="text-xs text-muted-foreground mt-3">
-                  This prompt is used to guide AI post generation to match your voice.
-                </p>
-              </div>
-            )}
-
             {/* LinkedIn Import - Coming Soon */}
             <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -311,9 +212,111 @@ export function VoiceTrainingSection() {
                 <span className="text-sm">LinkedIn import coming soon - Use paste method for now</span>
               </div>
             </div>
+
+            {/* Analyze Button - Centered, activates with 3+ posts */}
+            <div className="flex justify-center">
+              <Button
+                variant="gradient"
+                size="lg"
+                onClick={handleAnalyze}
+                disabled={analyzeVoice.isPending || savedPosts.length < 3}
+                className="gap-2 px-8"
+              >
+                {analyzeVoice.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Analyze My Voice
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Voice Profile - Always show, with "Not Analyzed" state when not trained */}
+            <div className="p-4 rounded-xl bg-secondary/30 border border-border">
+              <div className="flex items-center gap-2 mb-3">
+                <Brain className="w-5 h-5 text-primary" />
+                <h4 className="font-medium text-foreground">Your Voice Profile</h4>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">What the AI knows about your writing style</p>
+              <div className="grid grid-cols-2 gap-3">
+                {voiceTraits.map((trait) => (
+                  <div key={trait.label} className="p-3 rounded-lg bg-muted/50 border border-border">
+                    <h5 className="text-xs font-medium text-foreground mb-1">{trait.label}</h5>
+                    <p className="text-sm text-muted-foreground capitalize">
+                      {voiceProfile?.is_trained ? trait.value : "Not Analyzed"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* System Prompt - Always show */}
+            <div className="p-4 rounded-xl bg-secondary/30 border border-border">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Edit3 className="w-5 h-5 text-primary" />
+                  <div>
+                    <h4 className="font-medium text-foreground">System Prompt</h4>
+                    <p className="text-xs text-muted-foreground">The instructions that guide AI generation in your voice</p>
+                  </div>
+                </div>
+                {!isEditingPrompt && voiceProfile?.system_prompt && (
+                  <Button variant="ghost" size="sm" onClick={handleEditPrompt}>
+                    <Edit3 className="w-4 h-4 mr-1" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+              
+              {isEditingPrompt ? (
+                <div className="space-y-3">
+                  <Textarea
+                    value={editedPrompt}
+                    onChange={(e) => setEditedPrompt(e.target.value)}
+                    className="min-h-[120px] text-foreground"
+                    placeholder="Enter your custom system prompt..."
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
+                      <X className="w-4 h-4 mr-1" />
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="gradient" 
+                      size="sm" 
+                      onClick={handleSavePrompt}
+                      disabled={updateVoiceProfile.isPending}
+                    >
+                      {updateVoiceProfile.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4 mr-1" />
+                      )}
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              ) : voiceProfile?.system_prompt ? (
+                <pre className="text-sm text-foreground whitespace-pre-wrap font-mono p-3 rounded-lg bg-muted/50 border border-border max-h-32 overflow-y-auto">
+                  {voiceProfile.system_prompt}
+                </pre>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Brain className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No system prompt generated yet</p>
+                  <p className="text-xs mt-1">Train your voice profile to generate a custom prompt</p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
     </Card>
   );
-}
+});

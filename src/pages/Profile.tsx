@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { User, Mail, Briefcase, MapPin, Link as LinkIcon, Edit2, Save, Hash, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,13 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { VoiceTrainingSection } from "@/components/profile/VoiceTrainingSection";
+import { VoiceTrainingSection, VoiceTrainingSectionRef } from "@/components/profile/VoiceTrainingSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserTopics } from "@/hooks/useUserTopics";
 import { toast } from "sonner";
 
 export default function Profile() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const voiceSectionRef = useRef<VoiceTrainingSectionRef>(null);
+  const voiceContainerRef = useRef<HTMLDivElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [user, setUser] = useState<any>(null);
   const { topics, addTopic, removeTopic } = useUserTopics();
@@ -45,6 +48,21 @@ export default function Profile() {
       }
     });
   }, [navigate]);
+
+  // Handle scroll to voice training section
+  useEffect(() => {
+    const state = location.state as { scrollToVoice?: boolean } | null;
+    if (state?.scrollToVoice) {
+      // Clear the state to prevent re-scrolling on navigation
+      window.history.replaceState({}, document.title);
+      
+      // Wait for render then scroll and expand
+      setTimeout(() => {
+        voiceSectionRef.current?.expand();
+        voiceContainerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [location.state]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -111,8 +129,8 @@ export default function Profile() {
         </Card>
 
         {/* Voice Training Section */}
-        <div className="mb-6">
-          <VoiceTrainingSection />
+        <div className="mb-6" ref={voiceContainerRef}>
+          <VoiceTrainingSection ref={voiceSectionRef} />
         </div>
 
         {/* Topics of Interest */}
