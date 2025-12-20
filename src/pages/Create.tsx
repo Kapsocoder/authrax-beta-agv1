@@ -69,6 +69,7 @@ export default function Create() {
   const initialTopic = searchParams.get("topic") || "";
   const initialTemplateId = searchParams.get("template") || location.state?.templateId as string || "";
   const scheduledContent = location.state?.content as string | undefined;
+  const prefilledContent = location.state?.prefilledContent as string | undefined;
   const resumePostId = location.state?.postId as string | undefined;
   const resumeSourceType = location.state?.sourceType as string | undefined;
 
@@ -87,7 +88,7 @@ export default function Create() {
 
   const [mode, setMode] = useState<StudioMode>(getInitialModeFromResume());
   const [capturedContent, setCapturedContent] = useState(
-    initialMode === "resume" ? (location.state?.content as string || "") : ""
+    prefilledContent || (initialMode === "resume" ? (location.state?.content as string || "") : "")
   );
   const [generatedContent, setGeneratedContent] = useState(
     initialMode === "edit" ? (location.state?.content as string || "") : ""

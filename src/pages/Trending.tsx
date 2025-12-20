@@ -75,8 +75,14 @@ export default function Trending() {
     setUsePreselectedTopics(true);
   };
 
-  const handleCreatePost = (content: string) => {
-    navigate("/create", { state: { mode: "draft" } });
+  const handleCreatePostFromPost = (post: TrendingPost) => {
+    const prefilledContent = `Topic: ${post.title}\n\nContext: ${post.selftext || "Trending discussion from r/" + post.subreddit}\n\nSource: https://reddit.com${post.permalink}`;
+    navigate("/create", { state: { mode: "draft", prefilledContent } });
+  };
+
+  const handleCreatePostFromNews = (news: NewsItem) => {
+    const prefilledContent = `Topic: ${news.title}\n\nSummary: ${news.description}\n\nSource: ${news.link}`;
+    navigate("/create", { state: { mode: "draft", prefilledContent } });
   };
 
   const formatTimeAgo = (timestamp: number | string) => {
@@ -346,7 +352,7 @@ export default function Trending() {
                   variant="gradient"
                   className="flex-1"
                   onClick={() => {
-                    handleCreatePost(selectedPost.title);
+                    handleCreatePostFromPost(selectedPost);
                     setSelectedPost(null);
                   }}
                 >
@@ -393,7 +399,7 @@ export default function Trending() {
                   variant="gradient"
                   className="flex-1"
                   onClick={() => {
-                    handleCreatePost(selectedNews.title);
+                    handleCreatePostFromNews(selectedNews);
                     setSelectedNews(null);
                   }}
                 >
