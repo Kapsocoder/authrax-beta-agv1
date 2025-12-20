@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sparkles, Mail, Lock, User, ArrowRight, Linkedin } from "lucide-react";
+import { Sparkles, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
+import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
 import { toast } from "sonner";
 
 type AuthMode = "signin" | "signup";
@@ -47,10 +48,6 @@ export default function Auth() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleLinkedInAuth = async () => {
-    toast.info("LinkedIn OAuth requires app approval. Using email auth for now.");
   };
 
   return (
@@ -192,16 +189,7 @@ export default function Auth() {
             </div>
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="w-full gap-2"
-            onClick={handleLinkedInAuth}
-          >
-            <Linkedin className="w-5 h-5 text-[#0A66C2]" />
-            LinkedIn
-          </Button>
+          <SocialAuthButtons mode={mode} />
 
           <p className="text-center mt-6 text-sm text-muted-foreground">
             {mode === "signin" ? "Don't have an account?" : "Already have an account?"}{" "}
