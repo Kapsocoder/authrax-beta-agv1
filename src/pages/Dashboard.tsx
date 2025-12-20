@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { 
   PenSquare, 
@@ -15,6 +15,8 @@ import {
   Video,
   FileText
 } from "lucide-react";
+import { formatDistanceToNow, parseISO } from "date-fns";
+import { Post } from "@/hooks/usePosts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -166,6 +168,40 @@ export default function Dashboard() {
     ? topics.filter(t => t.is_active).map(t => t.name)
     : ["AI in Business", "Leadership", "Remote Work", "Career Growth", "Productivity", "Tech Trends"];
 
+  // Recent drafts - sorted by updated_at, show most recent 3
+  const recentDrafts = useMemo(() => {
+    return (posts || [])
+      .filter(p => p.status === "draft")
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .slice(0, 3);
+  }, [posts]);
+
+  // Smart edit routing - if draft has generated content (is_ai_generated), go to Edit mode
+  // Otherwise go to Studio to continue working on it
+  const handleEditDraft = (draft: Post) => {
+    if (draft.is_ai_generated) {
+      // Has generated content - go to Edit Post screen
+      navigate("/create", { 
+        state: { 
+          mode: "edit",
+          postId: draft.id,
+          content: draft.content,
+          aiPrompt: draft.ai_prompt 
+        } 
+      });
+    } else {
+      // No generated content - go to Studio to continue working
+      navigate("/create", {
+        state: {
+          mode: "resume",
+          postId: draft.id,
+          content: draft.content,
+          sourceType: draft.ai_prompt // ai_prompt stores the source type for non-generated drafts
+        }
+      });
+    }
+  };
+
   return (
     <AppLayout onLogout={handleLogout}>
       <div className="p-4 md:p-8 max-w-6xl mx-auto animate-fade-in">
@@ -255,16 +291,44 @@ export default function Dashboard() {
         {/* Recent Drafts */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Recent Drafts</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Recent Drafts</CardTitle>
+              {recentDrafts.length > 0 && (
+                <Button variant="ghost" size="sm" className="text-primary" onClick={() => navigate("/drafts")}>
+                  View All
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              <PenSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p className="mb-2">No drafts yet</p>
-              <Button variant="gradient" size="sm" onClick={() => navigate("/create")}>
-                Create Your First Post
-              </Button>
-            </div>
+            {recentDrafts.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <PenSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="mb-2">No drafts yet</p>
+                <Button variant="gradient" size="sm" onClick={() => navigate("/create")}>
+                  Create Your First Post
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentDrafts.map((draft) => (
+                  <div 
+                    key={draft.id}
+                    className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/50 cursor-pointer transition-all"
+                    onClick={() => handleEditDraft(draft)}
+                  >
+                    <p className="text-sm text-foreground line-clamp-2 mb-2">
+                      {draft.content || "Empty draft..."}
+                    </p>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{formatDistanceToNow(parseISO(draft.updated_at), { addSuffix: true })}</span>
+                      <span>{draft.is_ai_generated ? "AI Generated" : "Draft"}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -29,14 +29,27 @@ export default function Drafts() {
   }, [posts, searchQuery]);
 
   const handleEdit = (post: Post) => {
-    navigate("/create", { 
-      state: { 
-        mode: "edit",
-        postId: post.id,
-        content: post.content,
-        aiPrompt: post.ai_prompt 
-      } 
-    });
+    if (post.is_ai_generated) {
+      // Has generated content - go to Edit Post screen
+      navigate("/create", { 
+        state: { 
+          mode: "edit",
+          postId: post.id,
+          content: post.content,
+          aiPrompt: post.ai_prompt 
+        } 
+      });
+    } else {
+      // No generated content - go to Studio to continue working
+      navigate("/create", {
+        state: {
+          mode: "resume",
+          postId: post.id,
+          content: post.content,
+          sourceType: post.ai_prompt // ai_prompt stores the source type for non-generated drafts
+        }
+      });
+    }
   };
 
   const handleDelete = async (postId: string) => {
