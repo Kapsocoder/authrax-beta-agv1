@@ -87,7 +87,7 @@ export function PostEditor({
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         placeholder={placeholder}
-        className="min-h-[200px] border-0 focus-visible:ring-0 resize-none text-base leading-relaxed p-4 bg-transparent"
+        className="min-h-[200px] border-0 focus-visible:ring-0 resize-none text-base leading-relaxed p-4 bg-transparent text-foreground"
       />
 
       {/* Footer */}

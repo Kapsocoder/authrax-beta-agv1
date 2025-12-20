@@ -1,19 +1,24 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Mail, Briefcase, MapPin, Link as LinkIcon, Edit2, Save } from "lucide-react";
+import { User, Mail, Briefcase, MapPin, Link as LinkIcon, Edit2, Save, Hash, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { VoiceTrainingSection } from "@/components/profile/VoiceTrainingSection";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserTopics } from "@/hooks/useUserTopics";
 import { toast } from "sonner";
 
 export default function Profile() {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const { topics, addTopic, removeTopic } = useUserTopics();
+  const [newTopic, setNewTopic] = useState("");
   const [profile, setProfile] = useState({
     fullName: "",
     title: "",
@@ -51,9 +56,23 @@ export default function Profile() {
     setIsEditing(false);
   };
 
+  const handleAddTopic = () => {
+    if (newTopic.trim()) {
+      addTopic.mutate(newTopic.trim());
+      setNewTopic("");
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddTopic();
+    }
+  };
+
   return (
     <AppLayout onLogout={handleLogout}>
-      <div className="p-4 md:p-8 max-w-2xl mx-auto animate-fade-in">
+      <div className="p-4 md:p-8 max-w-3xl mx-auto animate-fade-in">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">Profile</h1>
           <Button
@@ -87,6 +106,69 @@ export default function Profile() {
                 </h2>
                 <p className="text-muted-foreground">{user?.email}</p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Voice Training Section */}
+        <div className="mb-6">
+          <VoiceTrainingSection />
+        </div>
+
+        {/* Topics of Interest */}
+        <Card className="bg-card border-border mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Hash className="w-5 h-5 text-primary" />
+              Topics of Interest
+            </CardTitle>
+            <CardDescription>
+              Topics you want to follow and get trending content about
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {topics.map((topic) => (
+                <Badge 
+                  key={topic.id} 
+                  variant="secondary" 
+                  className="px-3 py-1.5 cursor-pointer hover:bg-destructive/20 hover:text-destructive transition-colors"
+                  onClick={() => removeTopic.mutate(topic.id)}
+                >
+                  {topic.name}
+                  <span className="ml-2 opacity-60">×</span>
+                </Badge>
+              ))}
+              {topics.length === 0 && (
+                <p className="text-sm text-muted-foreground">No topics added yet</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Add a topic (e.g., AI, Leadership)"
+                value={newTopic}
+                onChange={(e) => setNewTopic(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="flex-1"
+              />
+              <Button 
+                variant="outline" 
+                onClick={handleAddTopic}
+                disabled={!newTopic.trim() || addTopic.isPending}
+              >
+                Add
+              </Button>
+            </div>
+            
+            {/* Upcoming Feature: Notifications */}
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 mt-4">
+              <div className="flex items-center gap-2 text-primary">
+                <Bell className="w-4 h-4" />
+                <span className="text-sm font-medium">Coming Soon</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Get notified about trending posts and topics based on your interests
+              </p>
             </div>
           </CardContent>
         </Card>

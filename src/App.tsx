@@ -13,6 +13,8 @@ import Analytics from "./pages/Analytics";
 import Voice from "./pages/Voice";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import Trending from "./pages/Trending";
+import Drafts from "./pages/Drafts";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,6 +62,8 @@ const AppRoutes = () => (
       <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/create" element={<ProtectedRoute><Create /></ProtectedRoute>} />
+      <Route path="/drafts" element={<ProtectedRoute><Drafts /></ProtectedRoute>} />
+      <Route path="/trending" element={<ProtectedRoute><Trending /></ProtectedRoute>} />
       <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
       <Route path="/voice" element={<ProtectedRoute><Voice /></ProtectedRoute>} />
