@@ -11,6 +11,13 @@ interface GeneratePostParams {
   voiceTranscript?: string;
 }
 
+interface RegeneratePostParams {
+  editorContent: string;
+  changeRequest: string;
+  tone: string;
+  templatePrompt?: string;
+}
+
 export function useAIGeneration() {
   const { user, session } = useAuth();
 
@@ -41,8 +48,35 @@ export function useAIGeneration() {
     },
   });
 
+  const regeneratePost = useMutation({
+    mutationFn: async ({ editorContent, changeRequest, tone, templatePrompt }: RegeneratePostParams) => {
+      if (!session?.access_token) {
+        throw new Error("Not authenticated");
+      }
+      
+      const { data, error } = await supabase.functions.invoke("generate-post", {
+        body: { 
+          userId: user?.id,
+          tone,
+          editorContent,
+          changeRequest,
+          templatePrompt,
+        },
+      });
+      
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      
+      return data.content as string;
+    },
+    onError: (error) => {
+      toast.error("Failed to regenerate content: " + error.message);
+    },
+  });
+
   return {
     generatePost,
-    isGenerating: generatePost.isPending,
+    regeneratePost,
+    isGenerating: generatePost.isPending || regeneratePost.isPending,
   };
 }

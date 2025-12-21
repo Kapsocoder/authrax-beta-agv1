@@ -12,7 +12,18 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, type, userId, tone } = await req.json();
+    const { 
+      prompt, 
+      type, 
+      userId, 
+      tone, 
+      sourceUrl, 
+      voiceTranscript,
+      // New parameters for AI Assist regeneration
+      editorContent,
+      changeRequest,
+      templatePrompt,
+    } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -65,7 +76,7 @@ Sentence length: ${voiceProfile.sentence_length || "medium"}
 
     const toneOverlay = tone && toneInstructions[tone] ? `\n\nTone overlay: ${toneInstructions[tone]}` : "";
 
-    const systemPrompt = systemPromptOverride || `You are an expert LinkedIn content creator. Generate engaging, authentic LinkedIn posts that drive engagement.
+    const baseSystemPrompt = `You are an expert LinkedIn content creator. Generate engaging, authentic LinkedIn posts that drive engagement.
 
 Guidelines:
 - Write in first person
@@ -78,27 +89,43 @@ Guidelines:
 - Make it feel personal and authentic, not corporate
 ${voiceContext}${toneOverlay}`;
 
+    const systemPrompt = systemPromptOverride || baseSystemPrompt;
+
     let userPrompt = "";
-    switch (type) {
-      case "topic":
-      case "idea":
-        userPrompt = `Write a LinkedIn post based on the following:\n\n${prompt}`;
-        break;
-      case "url":
-        userPrompt = `Write a LinkedIn post sharing insights or commentary about this content. Summarize the key points and add your personal take:\n\n${prompt}`;
-        break;
-      case "notes":
-      case "voice":
-        userPrompt = `Transform these rough thoughts/notes into a polished, engaging LinkedIn post. Keep the core message but make it engaging:\n\n${prompt}`;
-        break;
-      case "repurpose":
-        userPrompt = `Repurpose this document content into a compelling LinkedIn post. Extract the key insights and present them in an engaging way:\n\n${prompt}`;
-        break;
-      default:
-        userPrompt = prompt;
+    
+    // Handle AI Assist regeneration (when editorContent and changeRequest are provided)
+    if (editorContent && changeRequest) {
+      userPrompt = `Here is the current LinkedIn post:\n\n---\n${editorContent}\n---\n\n`;
+      userPrompt += `The user wants to make the following changes: "${changeRequest}"\n\n`;
+      
+      if (templatePrompt) {
+        userPrompt += `Additionally, apply this template format:\n${templatePrompt}\n\n`;
+      }
+      
+      userPrompt += `Please regenerate the post incorporating the requested changes while maintaining the core message. Apply the tone specified in the system prompt.`;
+    } else {
+      // Original generation logic
+      switch (type) {
+        case "topic":
+        case "idea":
+          userPrompt = `Write a LinkedIn post based on the following:\n\n${prompt}`;
+          break;
+        case "url":
+          userPrompt = `Write a LinkedIn post sharing insights or commentary about this content. Summarize the key points and add your personal take:\n\n${prompt}`;
+          break;
+        case "notes":
+        case "voice":
+          userPrompt = `Transform these rough thoughts/notes into a polished, engaging LinkedIn post. Keep the core message but make it engaging:\n\n${prompt}`;
+          break;
+        case "repurpose":
+          userPrompt = `Repurpose this document content into a compelling LinkedIn post. Extract the key insights and present them in an engaging way:\n\n${prompt}`;
+          break;
+        default:
+          userPrompt = prompt;
+      }
     }
 
-    console.log("Generating post with prompt:", userPrompt.substring(0, 100));
+    console.log("Generating post with type:", type, "changeRequest:", changeRequest?.substring(0, 50));
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
