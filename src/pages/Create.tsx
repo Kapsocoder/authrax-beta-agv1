@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation, useBlocker } from "react-router-dom";
 import { 
   ArrowLeft, 
   Eye, 
@@ -106,10 +106,37 @@ export default function Create() {
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [urlInput, setUrlInput] = useState("");
-  const [manualSaved, setManualSaved] = useState(false);
-  const [editingPostId, setEditingPostId] = useState<string | null>(resumePostId || null);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(resumePostId || null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [lastSavedContent, setLastSavedContent] = useState<string>("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const blockerProceedRef = useRef<(() => void) | null>(null);
+
+  // Track unsaved changes
+  useEffect(() => {
+    if (generatedContent && generatedContent !== lastSavedContent) {
+      setHasUnsavedChanges(true);
+    } else {
+      setHasUnsavedChanges(false);
+    }
+  }, [generatedContent, lastSavedContent]);
+
+  // Block navigation when there are unsaved changes
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      hasUnsavedChanges &&
+      hasGeneratedContent &&
+      currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      blockerProceedRef.current = blocker.proceed;
+      setShowUnsavedDialog(true);
+    }
+  }, [blocker.state]);
 
   // Auto-save draft when content is captured (but NOT when editing an existing post)
   const isEditingExisting = initialMode === "edit" || initialMode === "resume";
@@ -195,7 +222,28 @@ export default function Create() {
         voiceTranscript: mode === "voice" ? capturedContent : undefined,
       });
       setGeneratedContent(result);
-      toast.success("Post generated!");
+      
+      // Auto-save as draft on first generation
+      if (!currentDraftId) {
+        try {
+          const newPost = await createPost.mutateAsync({
+            content: result,
+            status: "draft",
+            is_ai_generated: true,
+            ai_prompt: capturedContent || urlInput || undefined,
+          });
+          setCurrentDraftId(newPost.id);
+          setLastSavedContent(result);
+          setHasUnsavedChanges(false);
+          toast.success("Post generated and saved as draft!");
+        } catch (saveError) {
+          toast.success("Post generated!");
+          console.error("Failed to auto-save draft:", saveError);
+        }
+      } else {
+        toast.success("Post generated!");
+        setHasUnsavedChanges(true);
+      }
     } catch (error) {
       // Error handled in hook
     }
@@ -207,11 +255,28 @@ export default function Create() {
       return;
     }
     
-    await createPost.mutateAsync({
-      content: generatedContent,
-      status: "draft",
-      is_ai_generated: true,
-    });
+    try {
+      if (currentDraftId) {
+        // Update existing draft
+        await updatePost.mutateAsync({
+          id: currentDraftId,
+          content: generatedContent,
+        });
+        toast.success("Draft updated!");
+      } else {
+        // Create new draft
+        const newPost = await createPost.mutateAsync({
+          content: generatedContent,
+          status: "draft",
+          is_ai_generated: true,
+        });
+        setCurrentDraftId(newPost.id);
+      }
+      setLastSavedContent(generatedContent);
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      // Error handled in hook
+    }
   };
 
   const handleSchedule = () => {
@@ -287,6 +352,7 @@ export default function Create() {
         tone: selectedTone,
       });
       setGeneratedContent(result);
+      setHasUnsavedChanges(true);
       setShowAIDialog(false);
       setAiPrompt("");
       setDialogTemplate(null);
@@ -328,14 +394,14 @@ export default function Create() {
                   variant="ghost" 
                   size="sm" 
                   onClick={handleSaveDraft}
-                  disabled={createPost.isPending}
+                  disabled={createPost.isPending || updatePost.isPending || !hasUnsavedChanges}
                 >
-                  {createPost.isPending ? (
+                  {(createPost.isPending || updatePost.isPending) ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
                     <Save className="w-4 h-4 mr-2" />
                   )}
-                  <span className="hidden sm:inline">Save</span>
+                  <span className="hidden sm:inline">Save Draft</span>
                 </Button>
                 
                 <DropdownMenu>
@@ -425,6 +491,47 @@ export default function Create() {
               </div>
             </div>
           </div>
+
+          {/* Unsaved Changes Dialog */}
+          <Dialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Unsaved Changes</DialogTitle>
+                <DialogDescription>
+                  You have unsaved changes. Would you like to save your draft before leaving?
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex gap-3 justify-end pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowUnsavedDialog(false);
+                    blockerProceedRef.current?.();
+                    blockerProceedRef.current = null;
+                  }}
+                >
+                  Discard
+                </Button>
+                <Button
+                  variant="gradient"
+                  onClick={async () => {
+                    await handleSaveDraft();
+                    setShowUnsavedDialog(false);
+                    blockerProceedRef.current?.();
+                    blockerProceedRef.current = null;
+                  }}
+                  disabled={createPost.isPending || updatePost.isPending}
+                >
+                  {(createPost.isPending || updatePost.isPending) ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Save Draft
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* AI Regeneration Dialog */}
           <Dialog open={showAIDialog} onOpenChange={(open) => {
