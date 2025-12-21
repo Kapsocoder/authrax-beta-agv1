@@ -26,6 +26,7 @@ import { PostEditor } from "@/components/post/PostEditor";
 import { LinkedInPreview } from "@/components/post/LinkedInPreview";
 import { ToneSelector, ToneOption } from "@/components/studio/ToneSelector";
 import { TrendingTemplates } from "@/components/templates/TrendingTemplates";
+import { AIAssistDialog } from "@/components/studio/AIAssistDialog";
 import { TemplateLibraryDialog } from "@/components/templates/TemplateLibraryDialog";
 import { TemplateCard } from "@/components/templates/TemplateCard";
 import { FloatingVoiceBar } from "@/components/studio/FloatingVoiceBar";
@@ -65,7 +66,7 @@ export default function Create() {
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
   const { createPost, updatePost } = usePosts();
-  const { generatePost, isGenerating } = useAIGeneration();
+  const { generatePost, regeneratePost, isGenerating } = useAIGeneration();
   const { data: allTemplates = [] } = useTemplates();
   
   // Mode from navigation state
@@ -104,7 +105,6 @@ export default function Create() {
   const [showTemplatePreview, setShowTemplatePreview] = useState<Template | null>(null);
   const [activeTab, setActiveTab] = useState("write");
   const [showAIDialog, setShowAIDialog] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState("");
   const [urlInput, setUrlInput] = useState("");
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(resumePostId || null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
@@ -354,33 +354,28 @@ export default function Create() {
     }
   };
 
-  const [dialogTemplate, setDialogTemplate] = useState<Template | null>(null);
-
-  const handleRegenerateAI = async () => {
-    if (!aiPrompt.trim() && !dialogTemplate) {
-      toast.error("Enter instructions or select a template");
-      return;
-    }
-
+  const handleRegenerateAI = async (params: {
+    changeRequest: string;
+    template: Template | null;
+    tone: string;
+  }) => {
     try {
-      let prompt = `${generatedContent}\n\n`;
-      if (aiPrompt.trim()) {
-        prompt += `Modifications requested: ${aiPrompt}\n\n`;
-      }
-      if (dialogTemplate) {
-        prompt += `Use this template format:\nTemplate: ${dialogTemplate.name}\nStructure: ${dialogTemplate.structure}\nDescription: ${dialogTemplate.description}`;
+      // Build template prompt if template is selected
+      let templatePrompt: string | undefined;
+      if (params.template) {
+        templatePrompt = `Template: ${params.template.name}\nStructure: ${params.template.structure}\nDescription: ${params.template.description}\nPrompt: ${params.template.prompt}`;
       }
 
-      const result = await generatePost.mutateAsync({
-        prompt,
-        type: "topic",
-        tone: selectedTone,
+      const result = await regeneratePost.mutateAsync({
+        editorContent: generatedContent,
+        changeRequest: params.changeRequest,
+        tone: params.tone,
+        templatePrompt,
       });
+      
       setGeneratedContent(result);
       setHasUnsavedChanges(true);
       setShowAIDialog(false);
-      setAiPrompt("");
-      setDialogTemplate(null);
       toast.success("Content regenerated!");
     } catch (error) {
       // Error handled in hook
@@ -549,96 +544,15 @@ export default function Create() {
             </DialogContent>
           </Dialog>
 
-          {/* AI Regeneration Dialog */}
-          <Dialog open={showAIDialog} onOpenChange={(open) => {
-            setShowAIDialog(open);
-            if (!open) {
-              setDialogTemplate(null);
-              setAiPrompt("");
-            }
-          }}>
-            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Wand2 className="w-5 h-5 text-primary" />
-                  Regenerate with AI
-                </DialogTitle>
-                <DialogDescription>
-                  Describe what changes you'd like and let AI create a new version.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div>
-                  <Label htmlFor="ai-prompt">What would you like to change?</Label>
-                  <Input
-                    id="ai-prompt"
-                    placeholder="e.g., 'Make it more punchy' or 'Add a call to action'"
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    className="mt-2"
-                  />
-                </div>
-
-                {/* Tone Selector */}
-                <div>
-                  <Label className="mb-2 block">Tone</Label>
-                  <ToneSelector selected={selectedTone} onChange={setSelectedTone} />
-                </div>
-
-                {/* Template Selection */}
-                <div>
-                  <Label className="mb-2 block">Template (optional)</Label>
-                  {dialogTemplate ? (
-                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <LayoutTemplate className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-medium">{dialogTemplate.name}</span>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => setDialogTemplate(null)}
-                      >
-                        Change
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto p-1">
-                      {allTemplates.slice(0, 8).map((template) => (
-                        <button
-                          key={template.id}
-                          onClick={() => setDialogTemplate(template)}
-                          className="p-3 text-left rounded-lg border border-border bg-secondary/30 hover:border-primary/50 hover:bg-secondary/50 transition-all"
-                        >
-                          <p className="text-sm font-medium text-foreground line-clamp-1">{template.name}</p>
-                          <p className="text-xs text-muted-foreground line-clamp-1">{template.category}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <Button 
-                  variant="gradient" 
-                  className="w-full" 
-                  onClick={handleRegenerateAI}
-                  disabled={isGenerating || (!aiPrompt.trim() && !dialogTemplate)}
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Wand2 className="w-4 h-4 mr-2" />
-                      Regenerate
-                    </>
-                  )}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          {/* AI Assist Dialog */}
+          <AIAssistDialog
+            open={showAIDialog}
+            onOpenChange={setShowAIDialog}
+            selectedTone={selectedTone}
+            onToneChange={setSelectedTone}
+            onRegenerate={handleRegenerateAI}
+            isGenerating={isGenerating}
+          />
         </div>
       </AppLayout>
     );
