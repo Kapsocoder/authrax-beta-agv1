@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, TrendingUp, Newspaper, MessageCircle, X, ExternalLink, ArrowUpRight, Loader2, RefreshCw } from "lucide-react";
+import { Search, TrendingUp, Newspaper, MessageCircle, X, ExternalLink, ArrowUpRight, Loader2, RefreshCw, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,13 +8,26 @@ import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserTopics } from "@/hooks/useUserTopics";
-import { useTrending, NewsItem, TrendingPost } from "@/hooks/useTrending";
+import { useTrending, NewsItem, TrendingPost, Timeframe } from "@/hooks/useTrending";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
+  { value: "24h", label: "Last 24 Hours" },
+  { value: "7d", label: "Last 7 Days" },
+  { value: "30d", label: "Last 30 Days" },
+];
 
 export default function Trending() {
   const navigate = useNavigate();
@@ -23,9 +36,10 @@ export default function Trending() {
   
   const [searchInput, setSearchInput] = useState("");
   const [searchTags, setSearchTags] = useState<string[]>([]);
-  const [usePreselectedTopics, setUsePreselectedTopics] = useState(true); // Track if preselected should be used
+  const [usePreselectedTopics, setUsePreselectedTopics] = useState(true);
   const [selectedPost, setSelectedPost] = useState<TrendingPost | null>(null);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
+  const [timeframe, setTimeframe] = useState<Timeframe>("7d");
   const [postsPage, setPostsPage] = useState(1);
   const [newsPage, setNewsPage] = useState(1);
   
@@ -36,25 +50,26 @@ export default function Trending() {
   
   // Use search tags only when user has searched, otherwise use preselected topics
   const topicsToFetch = searchTags.length > 0 
-    ? searchTags  // User searched - only use search tags
-    : (usePreselectedTopics ? activeTopicNames : []); // Default to preselected
+    ? searchTags
+    : (usePreselectedTopics ? activeTopicNames : []);
   
-  // Fetch trending data
-  const { data: trendingData, isLoading, refetch, isRefetching } = useTrending(topicsToFetch);
+  // Fetch trending data with timeframe
+  const { data: trendingData, isLoading, refetch, isRefetching } = useTrending(topicsToFetch, "all", timeframe);
   
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && searchInput.trim()) {
       e.preventDefault();
       if (!searchTags.includes(searchInput.trim())) {
         setSearchTags([...searchTags, searchInput.trim()]);
-        // Disable preselected topics when user starts searching
         setUsePreselectedTopics(false);
       }
       setSearchInput("");
+      // Reset pagination when search changes
+      setPostsPage(1);
+      setNewsPage(1);
     } else if (e.key === "Backspace" && !searchInput && searchTags.length > 0) {
       const newTags = searchTags.slice(0, -1);
       setSearchTags(newTags);
-      // Re-enable preselected topics if all search tags are removed
       if (newTags.length === 0) {
         setUsePreselectedTopics(true);
       }
@@ -64,7 +79,6 @@ export default function Trending() {
   const removeTag = (tagToRemove: string) => {
     const newTags = searchTags.filter(tag => tag !== tagToRemove);
     setSearchTags(newTags);
-    // Re-enable preselected topics if all search tags are removed
     if (newTags.length === 0) {
       setUsePreselectedTopics(true);
     }
@@ -73,6 +87,14 @@ export default function Trending() {
   const clearSearch = () => {
     setSearchTags([]);
     setUsePreselectedTopics(true);
+    setPostsPage(1);
+    setNewsPage(1);
+  };
+
+  const handleTimeframeChange = (value: Timeframe) => {
+    setTimeframe(value);
+    setPostsPage(1);
+    setNewsPage(1);
   };
 
   const handleCreatePostFromPost = (post: TrendingPost) => {
@@ -97,18 +119,20 @@ export default function Trending() {
     return "Just now";
   };
 
-  // Paginate displayed items
-  const displayedPosts = trendingData?.posts?.slice(0, postsPage * 10) || [];
-  const displayedNews = trendingData?.news?.slice(0, newsPage * 10) || [];
-  const hasMorePosts = (trendingData?.posts?.length || 0) > postsPage * 10;
-  const hasMoreNews = (trendingData?.news?.length || 0) > newsPage * 10;
+  // Paginate displayed items - load more in increments of 5
+  const postsPerPage = 5;
+  const newsPerPage = 5;
+  const displayedPosts = trendingData?.posts?.slice(0, postsPage * postsPerPage) || [];
+  const displayedNews = trendingData?.news?.slice(0, newsPage * newsPerPage) || [];
+  const hasMorePosts = (trendingData?.posts?.length || 0) > postsPage * postsPerPage;
+  const hasMoreNews = (trendingData?.news?.length || 0) > newsPage * newsPerPage;
 
   return (
     <AppLayout onLogout={signOut}>
       <div className="min-h-screen p-4 md:p-8 animate-fade-in">
         <div className="max-w-6xl mx-auto space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                 <TrendingUp className="w-6 h-6 text-primary" />
@@ -118,18 +142,35 @@ export default function Trending() {
                 Discover what's trending and find inspiration for your next post
               </p>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => refetch()}
-              disabled={isRefetching}
-            >
-              {isRefetching ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Timeframe Selector */}
+              <Select value={timeframe} onValueChange={handleTimeframeChange}>
+                <SelectTrigger className="w-[160px]">
+                  <Clock className="w-4 h-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEFRAME_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => refetch()}
+                disabled={isRefetching}
+              >
+                {isRefetching ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
           </div>
 
           {/* Search Bar */}
@@ -209,6 +250,9 @@ export default function Trending() {
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <MessageCircle className="w-5 h-5 text-primary" />
                   Trending Discussions
+                  {trendingData?.cached && (
+                    <Badge variant="outline" className="text-xs">Cached</Badge>
+                  )}
                 </h2>
                 
                 {displayedPosts.length === 0 ? (
@@ -257,7 +301,7 @@ export default function Trending() {
                     className="w-full"
                     onClick={() => setPostsPage(p => p + 1)}
                   >
-                    Load More Posts
+                    Load More Discussions
                   </Button>
                 )}
               </div>

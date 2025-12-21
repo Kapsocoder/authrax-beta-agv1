@@ -154,6 +154,51 @@ export type Database = {
         }
         Relationships: []
       }
+      recommended_posts: {
+        Row: {
+          content: string
+          created_at: string
+          expires_at: string
+          generated_at: string
+          id: string
+          is_used: boolean | null
+          source_title: string | null
+          source_type: string
+          source_url: string | null
+          title: string
+          topic: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          expires_at?: string
+          generated_at?: string
+          id?: string
+          is_used?: boolean | null
+          source_title?: string | null
+          source_type?: string
+          source_url?: string | null
+          title: string
+          topic: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          expires_at?: string
+          generated_at?: string
+          id?: string
+          is_used?: boolean | null
+          source_title?: string | null
+          source_type?: string
+          source_url?: string | null
+          title?: string
+          topic?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       templates: {
         Row: {
           category: string
@@ -235,6 +280,66 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      trending_cache: {
+        Row: {
+          author: string | null
+          category: string | null
+          created_at: string
+          description: string | null
+          fetched_at: string
+          id: string
+          item_metadata: Json | null
+          item_type: string
+          num_comments: number | null
+          published_at: string | null
+          score: number | null
+          source_id: string
+          source_name: string | null
+          source_url: string
+          timeframe: string
+          title: string
+          topic: string
+        }
+        Insert: {
+          author?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          fetched_at?: string
+          id?: string
+          item_metadata?: Json | null
+          item_type: string
+          num_comments?: number | null
+          published_at?: string | null
+          score?: number | null
+          source_id: string
+          source_name?: string | null
+          source_url: string
+          timeframe?: string
+          title: string
+          topic: string
+        }
+        Update: {
+          author?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          fetched_at?: string
+          id?: string
+          item_metadata?: Json | null
+          item_type?: string
+          num_comments?: number | null
+          published_at?: string | null
+          score?: number | null
+          source_id?: string
+          source_name?: string | null
+          source_url?: string
+          timeframe?: string
+          title?: string
+          topic?: string
         }
         Relationships: []
       }
