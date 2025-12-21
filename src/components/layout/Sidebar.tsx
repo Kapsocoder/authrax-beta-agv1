@@ -2,6 +2,7 @@ import { Home, PenSquare, Calendar, BarChart3, User, Settings, LogOut, TrendingU
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useNavigationGuard } from "@/contexts/NavigationGuardContext";
 
 const navItems = [
   { icon: Home, label: "Dashboard", path: "/dashboard" },
@@ -21,6 +22,14 @@ interface SidebarProps {
 export function Sidebar({ onLogout }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { requestNavigation } = useNavigationGuard();
+
+  const handleNavigation = (path: string) => {
+    if (location.pathname === path) return;
+    if (requestNavigation(path)) {
+      navigate(path);
+    }
+  };
 
   return (
     <aside className="hidden md:flex flex-col w-64 h-screen bg-card border-r border-border p-4 fixed left-0 top-0">
@@ -42,7 +51,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
           return (
             <button
               key={item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => handleNavigation(item.path)}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left",
                 isActive 

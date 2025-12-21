@@ -1,6 +1,7 @@
 import { Home, PenSquare, TrendingUp, FileText, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useNavigationGuard } from "@/contexts/NavigationGuardContext";
 
 const navItems = [
   { icon: Home, label: "Home", path: "/dashboard" },
@@ -13,6 +14,14 @@ const navItems = [
 export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { requestNavigation } = useNavigationGuard();
+
+  const handleNavigation = (path: string) => {
+    if (location.pathname === path) return;
+    if (requestNavigation(path)) {
+      navigate(path);
+    }
+  };
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 glass-strong border-t border-border/50 pb-safe md:hidden">
@@ -24,7 +33,7 @@ export function BottomNav() {
           return (
             <button
               key={item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => handleNavigation(item.path)}
               className={cn(
                 "flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-200",
                 isActive 

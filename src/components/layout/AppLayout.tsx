@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
+import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -15,6 +16,7 @@ export function AppLayout({ children, onLogout }: AppLayoutProps) {
         {children}
       </main>
       <BottomNav />
+      <UnsavedChangesDialog />
     </div>
   );
 }
