@@ -36,6 +36,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { usePosts } from "@/hooks/usePosts";
 import { useAIGeneration } from "@/hooks/useAIGeneration";
 import { useAutoSaveDraft } from "@/hooks/useAutoSaveDraft";
+import { useNavigationGuard } from "@/contexts/NavigationGuardContext";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -109,24 +110,28 @@ export default function Create() {
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(resumePostId || null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [lastSavedContent, setLastSavedContent] = useState<string>("");
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [localHasUnsavedChanges, setLocalHasUnsavedChanges] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const pendingNavigationRef = useRef<string | null>(null);
+  const saveDraftRef = useRef<() => Promise<void>>();
+  
+  // Global navigation guard
+  const { setHasUnsavedChanges, setOnSave } = useNavigationGuard();
 
   // Track unsaved changes
   useEffect(() => {
     if (generatedContent && generatedContent !== lastSavedContent) {
+      setLocalHasUnsavedChanges(true);
       setHasUnsavedChanges(true);
     } else {
+      setLocalHasUnsavedChanges(false);
       setHasUnsavedChanges(false);
     }
-  }, [generatedContent, lastSavedContent]);
+  }, [generatedContent, lastSavedContent, setHasUnsavedChanges]);
 
   // Handle browser beforeunload for unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges && generatedContent) {
+      if (localHasUnsavedChanges && generatedContent) {
         e.preventDefault();
         e.returnValue = '';
       }
@@ -134,40 +139,20 @@ export default function Create() {
     
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges, generatedContent]);
+  }, [localHasUnsavedChanges, generatedContent]);
 
-  // Custom navigation handler that checks for unsaved changes
-  const handleNavigate = useCallback((path: string) => {
-    if (hasUnsavedChanges && generatedContent) {
-      pendingNavigationRef.current = path;
-      setShowUnsavedDialog(true);
-    } else {
-      navigate(path);
-    }
-  }, [hasUnsavedChanges, generatedContent, navigate]);
-
-  const handleDiscardAndNavigate = () => {
-    setShowUnsavedDialog(false);
-    if (pendingNavigationRef.current === "back") {
-      setGeneratedContent("");
-      pendingNavigationRef.current = null;
-    } else if (pendingNavigationRef.current) {
-      navigate(pendingNavigationRef.current);
-      pendingNavigationRef.current = null;
-    }
-  };
-
-  const handleSaveAndNavigate = async () => {
-    await handleSaveDraft();
-    setShowUnsavedDialog(false);
-    if (pendingNavigationRef.current === "back") {
-      setGeneratedContent("");
-      pendingNavigationRef.current = null;
-    } else if (pendingNavigationRef.current) {
-      navigate(pendingNavigationRef.current);
-      pendingNavigationRef.current = null;
-    }
-  };
+  // Register save function with navigation guard
+  useEffect(() => {
+    setOnSave(async () => {
+      if (saveDraftRef.current) {
+        await saveDraftRef.current();
+      }
+    });
+    return () => {
+      setHasUnsavedChanges(false);
+      setOnSave(null);
+    };
+  }, [setHasUnsavedChanges, setOnSave]);
 
   // Auto-save draft when content is captured (but NOT when editing an existing post)
   const isEditingExisting = initialMode === "edit" || initialMode === "resume";
@@ -280,7 +265,7 @@ export default function Create() {
     }
   };
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = useCallback(async () => {
     if (!generatedContent.trim()) {
       toast.error("Generate content first!");
       return;
@@ -308,7 +293,12 @@ export default function Create() {
     } catch (error) {
       // Error handled in hook
     }
-  };
+  }, [generatedContent, currentDraftId, createPost, updatePost, setHasUnsavedChanges]);
+
+  // Keep save ref updated
+  useEffect(() => {
+    saveDraftRef.current = handleSaveDraft;
+  }, [handleSaveDraft]);
 
   const handleSchedule = () => {
     if (!generatedContent.trim()) {
@@ -408,14 +398,7 @@ export default function Create() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => {
-                    if (hasUnsavedChanges && generatedContent) {
-                      pendingNavigationRef.current = "back";
-                      setShowUnsavedDialog(true);
-                    } else {
-                      setGeneratedContent("");
-                    }
-                  }}
+                  onClick={() => setGeneratedContent("")}
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
@@ -424,10 +407,16 @@ export default function Create() {
 
               <div className="flex items-center gap-2">
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   size="sm" 
                   onClick={handleSaveDraft}
-                  disabled={createPost.isPending || updatePost.isPending || !hasUnsavedChanges}
+                  disabled={createPost.isPending || updatePost.isPending || !localHasUnsavedChanges}
+                  className={cn(
+                    "transition-all",
+                    localHasUnsavedChanges 
+                      ? "border-primary text-primary hover:bg-primary/10" 
+                      : "opacity-60"
+                  )}
                 >
                   {(createPost.isPending || updatePost.isPending) ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -524,38 +513,6 @@ export default function Create() {
               </div>
             </div>
           </div>
-
-          {/* Unsaved Changes Dialog */}
-          <Dialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Unsaved Changes</DialogTitle>
-                <DialogDescription>
-                  You have unsaved changes. Would you like to save your draft before leaving?
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex gap-3 justify-end pt-4">
-                <Button
-                  variant="outline"
-                  onClick={handleDiscardAndNavigate}
-                >
-                  Discard
-                </Button>
-                <Button
-                  variant="gradient"
-                  onClick={handleSaveAndNavigate}
-                  disabled={createPost.isPending || updatePost.isPending}
-                >
-                  {(createPost.isPending || updatePost.isPending) ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-2" />
-                  )}
-                  Save Draft
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
 
           {/* AI Assist Dialog */}
           <AIAssistDialog
