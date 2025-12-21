@@ -148,7 +148,10 @@ export default function Create() {
 
   const handleDiscardAndNavigate = () => {
     setShowUnsavedDialog(false);
-    if (pendingNavigationRef.current) {
+    if (pendingNavigationRef.current === "back") {
+      setGeneratedContent("");
+      pendingNavigationRef.current = null;
+    } else if (pendingNavigationRef.current) {
       navigate(pendingNavigationRef.current);
       pendingNavigationRef.current = null;
     }
@@ -157,7 +160,10 @@ export default function Create() {
   const handleSaveAndNavigate = async () => {
     await handleSaveDraft();
     setShowUnsavedDialog(false);
-    if (pendingNavigationRef.current) {
+    if (pendingNavigationRef.current === "back") {
+      setGeneratedContent("");
+      pendingNavigationRef.current = null;
+    } else if (pendingNavigationRef.current) {
       navigate(pendingNavigationRef.current);
       pendingNavigationRef.current = null;
     }
@@ -402,7 +408,14 @@ export default function Create() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setGeneratedContent("")}
+                  onClick={() => {
+                    if (hasUnsavedChanges && generatedContent) {
+                      pendingNavigationRef.current = "back";
+                      setShowUnsavedDialog(true);
+                    } else {
+                      setGeneratedContent("");
+                    }
+                  }}
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
@@ -421,7 +434,7 @@ export default function Create() {
                   ) : (
                     <Save className="w-4 h-4 mr-2" />
                   )}
-                  <span className="hidden sm:inline">Save Draft</span>
+                  Save Draft
                 </Button>
                 
                 <DropdownMenu>
