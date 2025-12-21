@@ -36,6 +36,7 @@ import { useUserTopics } from "@/hooks/useUserTopics";
 import { useTrending } from "@/hooks/useTrending";
 import { useRecommendedPosts, RecommendedPost } from "@/hooks/useRecommendedPosts";
 import { RecommendedPostCard } from "@/components/recommendations/RecommendedPostCard";
+import { RecommendedPostsSection } from "@/components/recommendations/RecommendedPostsSection";
 import { toast } from "sonner";
 
 export default function Dashboard() {
@@ -406,6 +407,9 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Recommended Posts Section */}
+        <RecommendedPostsSection />
 
         {/* Trending Templates */}
         <div className="mb-8">
