@@ -82,14 +82,17 @@ ${voiceContext}${toneOverlay}`;
     switch (type) {
       case "topic":
       case "idea":
-        userPrompt = `Write a LinkedIn post about: ${prompt}`;
+        userPrompt = `Write a LinkedIn post based on the following:\n\n${prompt}`;
         break;
       case "url":
-        userPrompt = `Write a LinkedIn post sharing insights or commentary about this content. Summarize the key points and add your personal take: ${prompt}`;
+        userPrompt = `Write a LinkedIn post sharing insights or commentary about this content. Summarize the key points and add your personal take:\n\n${prompt}`;
         break;
       case "notes":
       case "voice":
-        userPrompt = `Transform these rough thoughts/notes into a polished, engaging LinkedIn post. Keep the core message but make it engaging: ${prompt}`;
+        userPrompt = `Transform these rough thoughts/notes into a polished, engaging LinkedIn post. Keep the core message but make it engaging:\n\n${prompt}`;
+        break;
+      case "repurpose":
+        userPrompt = `Repurpose this document content into a compelling LinkedIn post. Extract the key insights and present them in an engaging way:\n\n${prompt}`;
         break;
       default:
         userPrompt = prompt;

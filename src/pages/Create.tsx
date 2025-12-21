@@ -11,11 +11,14 @@ import {
   Loader2, 
   Sparkles,
   Mic,
-  MicOff,
   Upload,
   LayoutTemplate,
   ArrowRight,
-  CheckCircle
+  CheckCircle,
+  Link as LinkIcon,
+  FileText,
+  Video,
+  Edit3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -25,12 +28,12 @@ import { ToneSelector, ToneOption } from "@/components/studio/ToneSelector";
 import { TrendingTemplates } from "@/components/templates/TrendingTemplates";
 import { TemplateLibraryDialog } from "@/components/templates/TemplateLibraryDialog";
 import { TemplateCard } from "@/components/templates/TemplateCard";
+import { FloatingVoiceBar } from "@/components/studio/FloatingVoiceBar";
 import { Template, useTemplate, useTemplates } from "@/hooks/useTemplates";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { usePosts } from "@/hooks/usePosts";
 import { useAIGeneration } from "@/hooks/useAIGeneration";
-import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useAutoSaveDraft } from "@/hooks/useAutoSaveDraft";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,6 +94,7 @@ export default function Create() {
   const [capturedContent, setCapturedContent] = useState(
     prefilledContent || (initialMode === "resume" ? (location.state?.content as string || "") : "")
   );
+  const [additionalContext, setAdditionalContext] = useState("");
   const [generatedContent, setGeneratedContent] = useState(
     initialMode === "edit" ? (location.state?.content as string || "") : ""
   );
@@ -104,6 +108,7 @@ export default function Create() {
   const [urlInput, setUrlInput] = useState("");
   const [manualSaved, setManualSaved] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(resumePostId || null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-save draft when content is captured (but NOT when editing an existing post)
@@ -113,20 +118,7 @@ export default function Create() {
     content: autoSaveContent,
     sourceUrl: urlInput || undefined,
     sourceType: mode,
-    enabled: autoSaveContent.length > 10 && !isEditingExisting, // Disable when editing existing
-  });
-
-  // Voice input with real-time transcription
-  const {
-    isListening,
-    isSupported: voiceSupported,
-    fullTranscript,
-    interimTranscript,
-    startListening,
-    stopListening,
-    clearTranscript,
-  } = useVoiceInput({
-    onError: (error) => toast.error(error),
+    enabled: autoSaveContent.length > 10 && !isEditingExisting,
   });
 
   // Set initial template from URL/state once templates are loaded
@@ -139,36 +131,18 @@ export default function Create() {
     }
   }, [initialTemplateId, allTemplates, selectedTemplate]);
 
-  // Update captured content as voice transcribes
-  useEffect(() => {
-    if (mode === "voice" && fullTranscript) {
-      setCapturedContent(fullTranscript);
-    }
-  }, [fullTranscript, mode]);
-
-  // Auto-start voice if coming from "Capture an Idea"
-  useEffect(() => {
-    if (mode === "voice" && voiceSupported && !isListening && !capturedContent) {
-      // Small delay to ensure component is mounted
-      const timer = setTimeout(() => {
-        startListening();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [mode, voiceSupported]);
-
   // If coming from schedule with content, go straight to editor
   useEffect(() => {
     if (scheduledContent) {
       setGeneratedContent(scheduledContent);
-      setMode(null); // Go to editor mode
+      setMode(null);
     } else if (initialTopic && !mode) {
       setCapturedContent(initialTopic);
     }
   }, [scheduledContent, initialTopic]);
 
   const hasGeneratedContent = generatedContent.length > 0;
-  const hasCapturedContent = capturedContent.length > 0 || urlInput.length > 0;
+  const hasCapturedContent = capturedContent.length > 0 || urlInput.length > 0 || uploadedFileName !== null;
 
   const handleGeneratePost = async () => {
     let prompt = capturedContent;
@@ -179,12 +153,26 @@ export default function Create() {
         toast.error("Please enter a URL");
         return;
       }
+      // Combine URL with additional context
       prompt = urlInput;
+      if (additionalContext.trim()) {
+        prompt = `URL: ${urlInput}\n\nAdditional context: ${additionalContext}`;
+      }
       generationType = "url";
     } else if (mode === "voice") {
       generationType = "voice";
+      // Add additional context if provided
+      if (additionalContext.trim()) {
+        prompt = `${capturedContent}\n\nAdditional notes: ${additionalContext}`;
+      }
     } else if (mode === "pdf") {
       generationType = "repurpose";
+      // Add additional context if provided
+      if (additionalContext.trim()) {
+        prompt = `${capturedContent}\n\nAdditional context: ${additionalContext}`;
+      }
+    } else if (mode === "draft") {
+      generationType = "topic";
     }
 
     if (!prompt.trim()) {
@@ -195,7 +183,7 @@ export default function Create() {
     // Add template context to prompt
     let fullPrompt = prompt;
     if (selectedTemplate) {
-      fullPrompt = `${prompt}\n\nUse this template format:\nTemplate: ${selectedTemplate.name}\nStructure: ${selectedTemplate.structure}\nDescription: ${selectedTemplate.description}`;
+      fullPrompt = `${prompt}\n\nUse this template format:\nTemplate: ${selectedTemplate.name}\nStructure: ${selectedTemplate.structure}\nDescription: ${selectedTemplate.description}\nPrompt instructions: ${selectedTemplate.prompt}`;
     }
 
     try {
@@ -250,6 +238,7 @@ export default function Create() {
         toast.error("Please upload a PDF file");
         return;
       }
+      setUploadedFileName(file.name);
       // For now, just show the file name as captured content
       // In a full implementation, you'd extract text from the PDF
       setCapturedContent(`PDF uploaded: ${file.name}\n\n[PDF content extraction would go here]`);
@@ -306,6 +295,11 @@ export default function Create() {
       // Error handled in hook
     }
   };
+
+  // Handle voice transcript updates
+  const handleVoiceTranscriptUpdate = useCallback((text: string) => {
+    setCapturedContent(text);
+  }, []);
 
   const userName = profile?.full_name || user?.user_metadata?.full_name || "Your Name";
   const userHeadline = profile?.headline || "Professional";
@@ -530,7 +524,7 @@ export default function Create() {
   // Studio - Capture & Generate mode
   return (
     <AppLayout onLogout={signOut}>
-      <div className="min-h-screen animate-fade-in">
+      <div className={cn("min-h-screen animate-fade-in", mode === "voice" && "pb-32")}>
         {/* Header */}
         <header className="sticky top-0 z-40 glass-strong border-b border-border/50 px-4 py-3">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -538,147 +532,24 @@ export default function Create() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate("/dashboard")}
+                onClick={() => mode ? setMode(null) : navigate("/dashboard")}
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <h1 className="font-semibold text-foreground flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-primary" />
-                Content Studio
+                {mode === "voice" && "Capture Idea"}
+                {mode === "draft" && "Draft Post"}
+                {mode === "url" && "Import from Link"}
+                {mode === "video" && "From Video"}
+                {mode === "pdf" && "From PDF"}
+                {!mode && "Content Studio"}
               </h1>
             </div>
           </div>
         </header>
 
         <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
-          {/* Voice Capture Mode */}
-          {mode === "voice" && (
-            <Card className="border-primary/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mic className="w-5 h-5 text-primary" />
-                  Capture Your Idea
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-center">
-                  <Button
-                    variant={isListening ? "destructive" : "gradient"}
-                    size="lg"
-                    className={cn("h-20 w-20 rounded-full", isListening && "animate-pulse")}
-                    onClick={isListening ? stopListening : startListening}
-                    disabled={!voiceSupported}
-                  >
-                    {isListening ? (
-                      <MicOff className="w-8 h-8" />
-                    ) : (
-                      <Mic className="w-8 h-8" />
-                    )}
-                  </Button>
-                </div>
-                <p className="text-center text-sm text-muted-foreground">
-                  {isListening ? "Listening... Tap to stop" : "Tap to start speaking"}
-                </p>
-                
-                {/* Live transcription display */}
-                {(capturedContent || interimTranscript) && (
-                  <div className="bg-secondary/50 rounded-lg p-4 min-h-[100px]">
-                    <p className="text-foreground">
-                      {capturedContent}
-                      {interimTranscript && (
-                        <span className="text-muted-foreground italic"> {interimTranscript}</span>
-                      )}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Draft Mode */}
-          {mode === "draft" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Draft Your Post</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  placeholder="Write your thoughts, ideas, or bullet points here...
-
-Example:
-• Just closed a big deal
-• Learned that persistence pays off
-• Want to share lessons about B2B sales"
-                  value={capturedContent}
-                  onChange={(e) => setCapturedContent(e.target.value)}
-                  className="min-h-[200px] resize-none"
-                />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* URL/Video Mode */}
-          {(mode === "url" || mode === "video") && (
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {mode === "video" ? "Import from Video" : "Import from Link"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="url-input">
-                    {mode === "video" ? "YouTube URL" : "Article URL"}
-                  </Label>
-                  <Input
-                    id="url-input"
-                    type="url"
-                    placeholder={mode === "video" ? "https://youtube.com/watch?v=..." : "https://..."}
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    className="mt-2"
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  We'll summarize the content and remix it in your voice
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* PDF Mode */}
-          {mode === "pdf" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Repurpose a PDF</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <Button
-                  variant="outline"
-                  className="w-full h-32 border-dashed"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <Upload className="w-8 h-8 text-muted-foreground" />
-                    <span>Click to upload PDF</span>
-                  </div>
-                </Button>
-                {capturedContent && (
-                  <div className="bg-secondary/50 rounded-lg p-4">
-                    <p className="text-sm text-foreground">{capturedContent}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
           {/* No mode selected - show "What's on your mind?" options */}
           {!mode && !hasCapturedContent && (
             <Card>
@@ -700,8 +571,32 @@ Example:
                     className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
                     onClick={() => setMode("draft")}
                   >
-                    <span className="text-lg">✍️</span>
+                    <Edit3 className="w-5 h-5 text-primary" />
                     <span className="text-xs">Draft Post</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
+                    onClick={() => setMode("url")}
+                  >
+                    <LinkIcon className="w-5 h-5 text-primary" />
+                    <span className="text-xs">Import Link</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
+                    onClick={() => setMode("video")}
+                  >
+                    <Video className="w-5 h-5 text-primary" />
+                    <span className="text-xs">From Video</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
+                    onClick={() => setMode("pdf")}
+                  >
+                    <FileText className="w-5 h-5 text-primary" />
+                    <span className="text-xs">From PDF</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -711,30 +606,210 @@ Example:
                     <Clock className="w-5 h-5 text-primary" />
                     <span className="text-xs">Schedule</span>
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Voice Capture Mode */}
+          {mode === "voice" && (
+            <Card className="border-primary/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mic className="w-5 h-5 text-primary" />
+                  Your Idea
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Live transcription display */}
+                <div className="bg-secondary/50 rounded-lg p-4 min-h-[150px]">
+                  {capturedContent ? (
+                    <p className="text-foreground whitespace-pre-wrap">{capturedContent}</p>
+                  ) : (
+                    <p className="text-muted-foreground italic">Start speaking to capture your idea...</p>
+                  )}
+                </div>
+
+                {/* Additional context */}
+                <div>
+                  <Label htmlFor="voice-context" className="text-sm text-muted-foreground">
+                    Additional context (optional)
+                  </Label>
+                  <Textarea
+                    id="voice-context"
+                    placeholder="Add any additional notes or context..."
+                    value={additionalContext}
+                    onChange={(e) => setAdditionalContext(e.target.value)}
+                    className="mt-2 min-h-[80px] resize-none"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Draft Mode */}
+          {mode === "draft" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Edit3 className="w-5 h-5 text-primary" />
+                  Draft Your Post
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  placeholder="Write your thoughts, ideas, or bullet points here...
+
+Example:
+• Just closed a big deal
+• Learned that persistence pays off
+• Want to share lessons about B2B sales"
+                  value={capturedContent}
+                  onChange={(e) => setCapturedContent(e.target.value)}
+                  className="min-h-[200px] resize-none"
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* URL Mode */}
+          {mode === "url" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <LinkIcon className="w-5 h-5 text-primary" />
+                  Import from Link
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="url-input">Article URL</Label>
+                  <Input
+                    id="url-input"
+                    type="url"
+                    placeholder="https://..."
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    We'll summarize the content and remix it in your voice
+                  </p>
+                </div>
+
+                {/* Additional context textarea */}
+                <div>
+                  <Label htmlFor="url-context">Additional context (optional)</Label>
+                  <Textarea
+                    id="url-context"
+                    placeholder="Add your perspective or specific points you want to highlight..."
+                    value={additionalContext}
+                    onChange={(e) => setAdditionalContext(e.target.value)}
+                    className="mt-2 min-h-[100px] resize-none"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Video Mode */}
+          {mode === "video" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Video className="w-5 h-5 text-primary" />
+                  Import from Video
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="video-url-input">YouTube URL</Label>
+                  <Input
+                    id="video-url-input"
+                    type="url"
+                    placeholder="https://youtube.com/watch?v=..."
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    We'll extract key insights and create a post
+                  </p>
+                </div>
+
+                {/* Additional context textarea */}
+                <div>
+                  <Label htmlFor="video-context">Additional context (optional)</Label>
+                  <Textarea
+                    id="video-context"
+                    placeholder="Add your perspective or specific points you want to highlight..."
+                    value={additionalContext}
+                    onChange={(e) => setAdditionalContext(e.target.value)}
+                    className="mt-2 min-h-[100px] resize-none"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* PDF Mode */}
+          {mode === "pdf" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  Repurpose PDF/Document
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                
+                {uploadedFileName ? (
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-primary/10 border border-primary/30">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-5 h-5 text-primary" />
+                      <span className="text-sm font-medium">{uploadedFileName}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setUploadedFileName(null);
+                        setCapturedContent("");
+                      }}
+                    >
+                      Change
+                    </Button>
+                  </div>
+                ) : (
                   <Button
                     variant="outline"
-                    className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
-                    onClick={() => setMode("url")}
+                    className="w-full h-32 border-dashed"
+                    onClick={() => fileInputRef.current?.click()}
                   >
-                    <span className="text-lg">📰</span>
-                    <span className="text-xs">Import Link</span>
+                    <div className="flex flex-col items-center gap-2">
+                      <Upload className="w-8 h-8 text-muted-foreground" />
+                      <span>Click to upload PDF</span>
+                    </div>
                   </Button>
-                  <Button
-                    variant="outline"
-                    className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
-                    onClick={() => setMode("video")}
-                  >
-                    <span className="text-lg">🎥</span>
-                    <span className="text-xs">From Video</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
-                    onClick={() => setMode("pdf")}
-                  >
-                    <Upload className="w-5 h-5 text-primary" />
-                    <span className="text-xs">Repurpose PDF</span>
-                  </Button>
+                )}
+
+                {/* Additional context textarea */}
+                <div>
+                  <Label htmlFor="pdf-context">Additional context (optional)</Label>
+                  <Textarea
+                    id="pdf-context"
+                    placeholder="Add your perspective or specific points you want to highlight from the document..."
+                    value={additionalContext}
+                    onChange={(e) => setAdditionalContext(e.target.value)}
+                    className="mt-2 min-h-[100px] resize-none"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -756,10 +831,12 @@ Example:
             </Card>
           )}
 
-          {/* Tone Selector */}
-          <div className="flex justify-center">
-            <ToneSelector selected={selectedTone} onChange={setSelectedTone} />
-          </div>
+          {/* Tone Selector - show when a mode is selected */}
+          {mode && (
+            <div className="flex justify-center">
+              <ToneSelector selected={selectedTone} onChange={setSelectedTone} />
+            </div>
+          )}
 
           {/* Selected Template */}
           {selectedTemplate && (
@@ -781,12 +858,14 @@ Example:
             </Card>
           )}
 
-          {/* Trending Templates - show preview on click in Studio */}
-          <TrendingTemplates 
-            onSelectTemplate={handleTemplatePreview}
-            maxItems={6}
-            showPreviewFirst
-          />
+          {/* Trending Templates - show preview on click in Studio, only when mode is selected */}
+          {mode && (
+            <TrendingTemplates 
+              onSelectTemplate={handleTemplatePreview}
+              maxItems={6}
+              showPreviewFirst
+            />
+          )}
 
           {/* Auto-save indicator */}
           {hasAutoSaved && (
@@ -796,69 +875,50 @@ Example:
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            {!selectedTemplate && (
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={() => setShowTemplateLibrary(true)}
-              >
-                <LayoutTemplate className="w-4 h-4 mr-2" />
-                Choose Template
-              </Button>
-            )}
-            
-            {/* Manual Save Draft button */}
-            {hasCapturedContent && !manualSaved && (
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  const content = mode === "url" || mode === "video" ? urlInput : capturedContent;
-                  if (!content.trim()) {
-                    toast.error("Add some content first");
-                    return;
-                  }
-                  await createPost.mutateAsync({
-                    content,
-                    status: "draft",
-                    is_ai_generated: false,
-                    ai_prompt: urlInput ? `Source: ${urlInput}` : mode || undefined,
-                  });
-                  setManualSaved(true);
-                }}
-                disabled={createPost.isPending}
-              >
-                {createPost.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4 mr-2" />
-                )}
-                Save Draft
-              </Button>
-            )}
-            
-            <Button
-              variant="gradient"
-              className="flex-1"
-              onClick={handleGeneratePost}
-              disabled={isGenerating || (!hasCapturedContent && mode !== "url" && mode !== "video")}
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Generate Post
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </>
+          {/* Action Buttons - show when mode is selected */}
+          {mode && (
+            <div className="flex gap-3">
+              {!selectedTemplate && (
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setShowTemplateLibrary(true)}
+                >
+                  <LayoutTemplate className="w-4 h-4 mr-2" />
+                  Choose Template
+                </Button>
               )}
-            </Button>
-          </div>
+              
+              <Button
+                variant="gradient"
+                className="flex-1"
+                onClick={handleGeneratePost}
+                disabled={isGenerating || (!hasCapturedContent && mode !== "url" && mode !== "video")}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Generate Post
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
+
+        {/* Floating Voice Bar - only show in voice mode */}
+        {mode === "voice" && (
+          <FloatingVoiceBar 
+            onTranscriptUpdate={handleVoiceTranscriptUpdate}
+            autoStart={true}
+          />
+        )}
 
         {/* Template Library Dialog */}
         <TemplateLibraryDialog
