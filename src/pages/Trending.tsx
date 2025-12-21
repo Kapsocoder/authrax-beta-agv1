@@ -145,13 +145,13 @@ export default function Trending() {
             <div className="flex items-center gap-2">
               {/* Timeframe Selector */}
               <Select value={timeframe} onValueChange={handleTimeframeChange}>
-                <SelectTrigger className="w-[160px]">
-                  <Clock className="w-4 h-4 mr-2" />
+                <SelectTrigger className="w-[160px] bg-card border-border text-foreground">
+                  <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-card border-border">
                   {TIMEFRAME_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
+                    <SelectItem key={option.value} value={option.value} className="text-foreground">
                       {option.label}
                     </SelectItem>
                   ))}
@@ -297,7 +297,7 @@ export default function Trending() {
                 
                 {hasMorePosts && (
                   <Button 
-                    variant="outline" 
+                    variant="secondary" 
                     className="w-full"
                     onClick={() => setPostsPage(p => p + 1)}
                   >
@@ -352,7 +352,7 @@ export default function Trending() {
                 
                 {hasMoreNews && (
                   <Button 
-                    variant="outline" 
+                    variant="secondary" 
                     className="w-full"
                     onClick={() => setNewsPage(p => p + 1)}
                   >
