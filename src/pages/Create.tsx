@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useSearchParams, useLocation, useBlocker } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { 
   ArrowLeft, 
   Eye, 
@@ -112,7 +112,7 @@ export default function Create() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const blockerProceedRef = useRef<(() => void) | null>(null);
+  const pendingNavigationRef = useRef<string | null>(null);
 
   // Track unsaved changes
   useEffect(() => {
@@ -123,20 +123,45 @@ export default function Create() {
     }
   }, [generatedContent, lastSavedContent]);
 
-  // Block navigation when there are unsaved changes
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      hasUnsavedChanges &&
-      hasGeneratedContent &&
-      currentLocation.pathname !== nextLocation.pathname
-  );
-
+  // Handle browser beforeunload for unsaved changes
   useEffect(() => {
-    if (blocker.state === "blocked") {
-      blockerProceedRef.current = blocker.proceed;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges && generatedContent) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges, generatedContent]);
+
+  // Custom navigation handler that checks for unsaved changes
+  const handleNavigate = useCallback((path: string) => {
+    if (hasUnsavedChanges && generatedContent) {
+      pendingNavigationRef.current = path;
       setShowUnsavedDialog(true);
+    } else {
+      navigate(path);
     }
-  }, [blocker.state]);
+  }, [hasUnsavedChanges, generatedContent, navigate]);
+
+  const handleDiscardAndNavigate = () => {
+    setShowUnsavedDialog(false);
+    if (pendingNavigationRef.current) {
+      navigate(pendingNavigationRef.current);
+      pendingNavigationRef.current = null;
+    }
+  };
+
+  const handleSaveAndNavigate = async () => {
+    await handleSaveDraft();
+    setShowUnsavedDialog(false);
+    if (pendingNavigationRef.current) {
+      navigate(pendingNavigationRef.current);
+      pendingNavigationRef.current = null;
+    }
+  };
 
   // Auto-save draft when content is captured (but NOT when editing an existing post)
   const isEditingExisting = initialMode === "edit" || initialMode === "resume";
@@ -504,22 +529,13 @@ export default function Create() {
               <div className="flex gap-3 justify-end pt-4">
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    setShowUnsavedDialog(false);
-                    blockerProceedRef.current?.();
-                    blockerProceedRef.current = null;
-                  }}
+                  onClick={handleDiscardAndNavigate}
                 >
                   Discard
                 </Button>
                 <Button
                   variant="gradient"
-                  onClick={async () => {
-                    await handleSaveDraft();
-                    setShowUnsavedDialog(false);
-                    blockerProceedRef.current?.();
-                    blockerProceedRef.current = null;
-                  }}
+                  onClick={handleSaveAndNavigate}
                   disabled={createPost.isPending || updatePost.isPending}
                 >
                   {(createPost.isPending || updatePost.isPending) ? (
