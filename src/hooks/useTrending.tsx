@@ -29,14 +29,21 @@ interface TrendingResponse {
   hasMorePosts: boolean;
   totalNews: number;
   totalPosts: number;
+  cached?: boolean;
 }
 
-export function useTrending(topics: string[] = [], type: "all" | "news" | "posts" = "all") {
+export type Timeframe = "24h" | "7d" | "30d";
+
+export function useTrending(
+  topics: string[] = [], 
+  type: "all" | "news" | "posts" = "all",
+  timeframe: Timeframe = "7d"
+) {
   return useQuery({
-    queryKey: ["trending", topics, type],
+    queryKey: ["trending", topics, type, timeframe],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke<TrendingResponse>("fetch-trending", {
-        body: { topics, type, page: 1 },
+        body: { topics, type, page: 1, timeframe },
       });
       
       if (error) throw error;
@@ -47,12 +54,16 @@ export function useTrending(topics: string[] = [], type: "all" | "news" | "posts
   });
 }
 
-export function useTrendingInfinite(topics: string[] = [], type: "all" | "news" | "posts" = "all") {
+export function useTrendingInfinite(
+  topics: string[] = [], 
+  type: "all" | "news" | "posts" = "all",
+  timeframe: Timeframe = "7d"
+) {
   return useInfiniteQuery({
-    queryKey: ["trending-infinite", topics, type],
+    queryKey: ["trending-infinite", topics, type, timeframe],
     queryFn: async ({ pageParam = 1 }) => {
       const { data, error } = await supabase.functions.invoke<TrendingResponse>("fetch-trending", {
-        body: { topics, type, page: pageParam },
+        body: { topics, type, page: pageParam, timeframe },
       });
       
       if (error) throw error;

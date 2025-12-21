@@ -17,7 +17,8 @@ import {
   Newspaper,
   MessageCircle,
   ExternalLink,
-  Loader2
+  Loader2,
+  Lightbulb
 } from "lucide-react";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { Post } from "@/hooks/usePosts";
@@ -33,6 +34,8 @@ import { useVoiceProfile } from "@/hooks/useVoiceProfile";
 import { usePosts } from "@/hooks/usePosts";
 import { useUserTopics } from "@/hooks/useUserTopics";
 import { useTrending } from "@/hooks/useTrending";
+import { useRecommendedPosts, RecommendedPost } from "@/hooks/useRecommendedPosts";
+import { RecommendedPostCard } from "@/components/recommendations/RecommendedPostCard";
 import { toast } from "sonner";
 
 export default function Dashboard() {

@@ -1,4 +1,4 @@
-import { Home, PenSquare, Calendar, BarChart3, User, Settings, LogOut, TrendingUp, FileText, Sparkles } from "lucide-react";
+import { Home, PenSquare, Calendar, BarChart3, User, Settings, LogOut, TrendingUp, FileText, Sparkles, Lightbulb } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ const navItems = [
   { icon: Home, label: "Dashboard", path: "/dashboard" },
   { icon: PenSquare, label: "Create Post", path: "/create" },
   { icon: FileText, label: "Drafts", path: "/drafts" },
+  { icon: Lightbulb, label: "Recommended", path: "/recommendations" },
   { icon: TrendingUp, label: "Trending", path: "/trending" },
   { icon: Calendar, label: "Schedule", path: "/schedule" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
