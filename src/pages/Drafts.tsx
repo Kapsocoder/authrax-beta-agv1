@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Edit3, Trash2, Calendar, Clock, Sparkles, Plus, Search, Link2, Video, FileText as PDFIcon, Mic } from "lucide-react";
+import { FileText, Edit3, Trash2, Sparkles, Plus, Search, Link2, Video, FileText as PDFIcon, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -58,9 +58,6 @@ export default function Drafts() {
     }
   };
 
-  const handleSchedule = (post: Post) => {
-    navigate("/schedule", { state: { content: post.content } });
-  };
 
   // Get icon based on content type
   const getContentTypeIcon = (post: Post) => {
@@ -184,15 +181,6 @@ export default function Drafts() {
                       >
                         <Edit3 className="w-3 h-3" />
                         Edit
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="flex-1 gap-1"
-                        onClick={() => handleSchedule(draft)}
-                      >
-                        <Calendar className="w-3 h-3" />
-                        Schedule
                       </Button>
                       <Button 
                         variant="ghost" 
