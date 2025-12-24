@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, TrendingUp, Newspaper, MessageCircle, X, ExternalLink, ArrowUpRight, Loader2, RefreshCw, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserTopics } from "@/hooks/useUserTopics";
-import { useTrending, NewsItem, TrendingPost, Timeframe } from "@/hooks/useTrending";
+import { useQueryClient } from "@tanstack/react-query";
+import { useTrending, NewsItem, TrendingPost, Timeframe, fetchTrendingData } from "@/hooks/useTrending";
+import { useProfile } from "@/hooks/useProfile";
+import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +36,7 @@ export default function Trending() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { topics: userTopics } = useUserTopics();
-  
+
   const [searchInput, setSearchInput] = useState("");
   const [searchTags, setSearchTags] = useState<string[]>([]);
   const [usePreselectedTopics, setUsePreselectedTopics] = useState(true);
@@ -42,20 +45,24 @@ export default function Trending() {
   const [timeframe, setTimeframe] = useState<Timeframe>("7d");
   const [postsPage, setPostsPage] = useState(1);
   const [newsPage, setNewsPage] = useState(1);
-  
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryClient = useQueryClient();
+  const { checkFeatureAccess, usageCount } = useProfile();
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+
   // Get active topics for filtering
   const activeTopicNames = userTopics
     .filter(t => t.is_active)
     .map(t => t.name);
-  
+
   // Use search tags only when user has searched, otherwise use preselected topics
-  const topicsToFetch = searchTags.length > 0 
+  const topicsToFetch = searchTags.length > 0
     ? searchTags
     : (usePreselectedTopics ? activeTopicNames : []);
-  
+
   // Fetch trending data with timeframe
   const { data: trendingData, isLoading, refetch, isRefetching } = useTrending(topicsToFetch, "all", timeframe);
-  
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && searchInput.trim()) {
       e.preventDefault();
@@ -92,6 +99,10 @@ export default function Trending() {
   };
 
   const handleTimeframeChange = (value: Timeframe) => {
+    if (value === '24h' && !checkFeatureAccess('trending_realtime')) {
+      setShowSubscriptionModal(true);
+      return;
+    }
     setTimeframe(value);
     setPostsPage(1);
     setNewsPage(1);
@@ -113,11 +124,35 @@ export default function Trending() {
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
-    
+
     if (diffDays > 0) return `${diffDays}d ago`;
     if (diffHours > 0) return `${diffHours}h ago`;
     return "Just now";
   };
+
+  // Dynamic Loading Messages
+  const [loadingMsg, setLoadingMsg] = useState("Scanning latest news...");
+
+  // Cycle loading messages
+  useEffect(() => {
+    if (!isLoading && !isRefreshing) return;
+
+    const messages = [
+      "Scanning latest news...",
+      "Searching social discussions...",
+      "Analyzing trending topics...",
+      "Enriching content with social metrics...",
+      "Finalizing your personalized trends..."
+    ];
+
+    let index = 0;
+    const interval = setInterval(() => {
+      index = (index + 1) % messages.length;
+      setLoadingMsg(messages[index]);
+    }, 3000); // Change every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [isLoading, isRefreshing]);
 
   // Paginate displayed items - load more in increments of 5
   const postsPerPage = 5;
@@ -126,6 +161,24 @@ export default function Trending() {
   const displayedNews = trendingData?.news?.slice(0, newsPage * newsPerPage) || [];
   const hasMorePosts = (trendingData?.posts?.length || 0) > postsPage * postsPerPage;
   const hasMoreNews = (trendingData?.news?.length || 0) > newsPage * newsPerPage;
+
+  const handleManualRefresh = async () => {
+    if (!checkFeatureAccess('trending_realtime')) {
+      setShowSubscriptionModal(true);
+      return;
+    }
+    setIsRefreshing(true);
+    // Reset message immediately
+    setLoadingMsg("Starting fresh scan...");
+    try {
+      const newData = await fetchTrendingData(topicsToFetch, "all", timeframe, true);
+      queryClient.setQueryData(["trending", topicsToFetch, "all", timeframe], newData);
+    } catch (error) {
+      console.error("Failed to refresh trending data:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   return (
     <AppLayout onLogout={signOut}>
@@ -157,14 +210,15 @@ export default function Trending() {
                   ))}
                 </SelectContent>
               </Select>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => refetch()}
-                disabled={isRefetching}
+
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleManualRefresh}
+                disabled={isRefetching || isRefreshing}
               >
-                {isRefetching ? (
+                {isRefetching || isRefreshing ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <RefreshCw className="w-4 h-4" />
@@ -179,9 +233,9 @@ export default function Trending() {
               <div className="flex items-center gap-2 flex-wrap p-2 border rounded-lg bg-background">
                 <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 {searchTags.map((tag) => (
-                  <Badge 
-                    key={tag} 
-                    variant="secondary" 
+                  <Badge
+                    key={tag}
+                    variant="secondary"
                     className="flex items-center gap-1 cursor-pointer hover:bg-destructive/20"
                     onClick={() => removeTag(tag)}
                   >
@@ -219,9 +273,9 @@ export default function Trending() {
               <CardContent>
                 <div className="flex flex-wrap gap-2">
                   {activeTopicNames.map((topic) => (
-                    <Badge 
-                      key={topic} 
-                      variant="outline" 
+                    <Badge
+                      key={topic}
+                      variant="outline"
                       className={`border-primary/50 ${!usePreselectedTopics && searchTags.length > 0 ? 'line-through' : ''}`}
                     >
                       {topic}
@@ -237,9 +291,19 @@ export default function Trending() {
 
           {/* Loading State */}
           {isLoading && (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <span className="ml-2 text-muted-foreground">Loading trending content...</span>
+            <div className="flex flex-col items-center justify-center py-24 space-y-4">
+              <div className="relative">
+                <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-2 h-2 bg-background rounded-full" />
+                </div>
+              </div>
+              <p className="text-lg font-medium text-foreground animate-pulse">
+                {loadingMsg}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {(isRefreshing || timeframe === '24h') ? "This might take a moment as we scan live sources." : "Curating the best content for you."}
+              </p>
             </div>
           )}
 
@@ -254,7 +318,7 @@ export default function Trending() {
                     <Badge variant="outline" className="text-xs">Cached</Badge>
                   )}
                 </h2>
-                
+
                 {displayedPosts.length === 0 ? (
                   <Card>
                     <CardContent className="py-8 text-center text-muted-foreground">
@@ -263,7 +327,7 @@ export default function Trending() {
                   </Card>
                 ) : (
                   displayedPosts.map((post, index) => (
-                    <Card 
+                    <Card
                       key={`${post.permalink}-${index}`}
                       className="cursor-pointer hover:border-primary/50 transition-colors"
                       onClick={() => setSelectedPost(post)}
@@ -294,10 +358,10 @@ export default function Trending() {
                     </Card>
                   ))
                 )}
-                
+
                 {hasMorePosts && (
-                  <Button 
-                    variant="secondary" 
+                  <Button
+                    variant="secondary"
                     className="w-full"
                     onClick={() => setPostsPage(p => p + 1)}
                   >
@@ -312,7 +376,7 @@ export default function Trending() {
                   <Newspaper className="w-5 h-5 text-primary" />
                   Latest News
                 </h2>
-                
+
                 {displayedNews.length === 0 ? (
                   <Card>
                     <CardContent className="py-8 text-center text-muted-foreground">
@@ -321,7 +385,7 @@ export default function Trending() {
                   </Card>
                 ) : (
                   displayedNews.map((news, index) => (
-                    <Card 
+                    <Card
                       key={`${news.link}-${index}`}
                       className="cursor-pointer hover:border-primary/50 transition-colors"
                       onClick={() => setSelectedNews(news)}
@@ -349,10 +413,10 @@ export default function Trending() {
                     </Card>
                   ))
                 )}
-                
+
                 {hasMoreNews && (
-                  <Button 
-                    variant="secondary" 
+                  <Button
+                    variant="secondary"
                     className="w-full"
                     onClick={() => setNewsPage(p => p + 1)}
                   >
@@ -374,7 +438,7 @@ export default function Trending() {
               Trending Discussion
             </DialogTitle>
           </DialogHeader>
-          
+
           {selectedPost && (
             <div className="space-y-4">
               <div className="bg-secondary/50 rounded-lg p-4">
@@ -390,7 +454,7 @@ export default function Trending() {
                   <span>by u/{selectedPost.author}</span>
                 </div>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button
                   variant="gradient"
@@ -424,7 +488,7 @@ export default function Trending() {
               News Article
             </DialogTitle>
           </DialogHeader>
-          
+
           {selectedNews && (
             <div className="space-y-4">
               <div className="bg-secondary/50 rounded-lg p-4">
@@ -437,7 +501,7 @@ export default function Trending() {
                   <span>{formatTimeAgo(selectedNews.pubDate)}</span>
                 </div>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button
                   variant="gradient"
@@ -461,6 +525,11 @@ export default function Trending() {
           )}
         </DialogContent>
       </Dialog>
+      <SubscriptionModal
+        open={showSubscriptionModal}
+        onOpenChange={setShowSubscriptionModal}
+        currentUsage={usageCount}
+      />
     </AppLayout>
   );
 }

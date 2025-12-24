@@ -6,14 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { usePosts } from "@/hooks/usePosts";
-import { 
-  format, 
-  startOfMonth, 
-  endOfMonth, 
-  eachDayOfInterval, 
-  isSameMonth, 
-  isToday, 
-  addMonths, 
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameMonth,
+  isToday,
+  addMonths,
   subMonths,
   isSameDay,
   parseISO,
@@ -32,21 +32,26 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useProfile } from "@/hooks/useProfile";
+import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
 
 export default function Schedule() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signOut } = useAuth();
   const { posts, createPost, updatePost } = usePosts();
-  
+  const { checkUsageLimit, incrementUsage, usageCount, checkFeatureAccess } = useProfile();
+
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [editingContent, setEditingContent] = useState("");
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   // Content passed from Create page
   const contentToSchedule = location.state?.content as string | undefined;
+  const existingPostId = location.state?.postId as string | undefined;
 
   // Get scheduled posts grouped by date
   const scheduledPostsByDate = useMemo(() => {
@@ -82,7 +87,7 @@ export default function Schedule() {
 
   const handleDateClick = (day: Date) => {
     setSelectedDate(day);
-    
+
     // If we have content to schedule and clicked a date, open schedule dialog
     if (contentToSchedule) {
       setEditingContent(contentToSchedule);
@@ -96,21 +101,44 @@ export default function Schedule() {
       return;
     }
 
+    // Check Feature Access First
+    if (!checkFeatureAccess('schedule')) {
+      setShowSubscriptionModal(true);
+      return;
+    }
+
+    if (!checkUsageLimit()) {
+      setShowSubscriptionModal(true);
+      return;
+    }
+
     const [hours, minutes] = scheduleTime.split(":").map(Number);
     const scheduledFor = setMinutes(setHours(selectedDate, hours), minutes);
 
     try {
-      await createPost.mutateAsync({
-        content: editingContent,
-        status: "scheduled",
-        scheduled_for: scheduledFor.toISOString(),
-      });
-      
+      if (existingPostId) {
+        // Update existing draft to scheduled status
+        await updatePost.mutateAsync({
+          id: existingPostId,
+          status: "scheduled",
+          scheduled_for: scheduledFor.toISOString(),
+          content: editingContent, // Ensure content is up to date
+        });
+      } else {
+        // Create new scheduled post
+        await createPost.mutateAsync({
+          content: editingContent,
+          status: "scheduled",
+          scheduled_for: scheduledFor.toISOString(),
+        });
+      }
+
       setShowScheduleDialog(false);
       setEditingContent("");
       // Clear the location state
       window.history.replaceState({}, document.title);
       toast.success(`Post scheduled for ${format(scheduledFor, "MMM d 'at' h:mm a")}`);
+      incrementUsage.mutate();
     } catch (error) {
       // Error handled in hook
     }
@@ -154,8 +182,8 @@ export default function Schedule() {
                   <p className="text-sm font-medium text-foreground mb-1">Ready to schedule</p>
                   <p className="text-sm text-muted-foreground line-clamp-2">{contentToSchedule}</p>
                 </div>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="icon-sm"
                   onClick={() => window.history.replaceState({}, document.title)}
                 >
@@ -167,7 +195,7 @@ export default function Schedule() {
           </Card>
         )}
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
           {/* Calendar */}
           <Card className="md:col-span-2 bg-card border-border">
             <CardHeader className="pb-2">
@@ -242,60 +270,37 @@ export default function Schedule() {
             </CardContent>
           </Card>
 
-          {/* Scheduled Posts Sidebar */}
+          {/* Sidebar */}
           <div className="space-y-4">
             <Card className="bg-card border-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-primary" />
-                  {selectedDate ? format(selectedDate, "MMM d, yyyy") : "Select a date"}
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" />
+                  {selectedDate ? format(selectedDate, "MMM d") : "Select a date"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {selectedDatePosts.length > 0 ? (
                   <div className="space-y-3">
                     {selectedDatePosts.map((post) => (
-                      <div 
-                        key={post.id} 
+                      <div
+                        key={post.id}
                         className="p-3 rounded-lg bg-secondary/50 border border-border"
                       >
-                        <p className="text-sm text-foreground line-clamp-3 mb-2">
+                        <p className="text-sm text-foreground line-clamp-2 mb-2">
                           {post.content}
                         </p>
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-muted-foreground">
                             {post.scheduled_for && format(parseISO(post.scheduled_for), "h:mm a")}
                           </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs h-7"
-                            onClick={() => handleUnschedule(post.id)}
-                          >
-                            Unschedule
-                          </Button>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Clock className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                    <p className="text-sm mb-3">No posts scheduled</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (selectedDate) {
-                          setEditingContent("");
-                          setShowScheduleDialog(true);
-                        } else {
-                          navigate("/create");
-                        }
-                      }}
-                    >
-                      {selectedDate ? "Schedule a post" : "Create a post"}
-                    </Button>
+                  <div className="text-center py-4 text-muted-foreground">
+                    <p className="text-xs">No posts scheduled for this date</p>
                   </div>
                 )}
               </CardContent>
@@ -324,6 +329,74 @@ export default function Schedule() {
             </Card>
           </div>
         </div>
+
+        {/* All Scheduled Posts List */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-lg">Scheduled Posts</CardTitle>
+            <CardDescription>
+              {selectedDate
+                ? `Showing posts for ${format(selectedDate, "MMMM d, yyyy")}`
+                : "All upcoming scheduled posts"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {posts.filter(p => p.status === 'scheduled').length > 0 ? (
+              <div className="space-y-2">
+                {posts
+                  .filter(post => post.status === 'scheduled')
+                  .filter(post => {
+                    if (!selectedDate || !post.scheduled_for) return true;
+                    return isSameDay(parseISO(post.scheduled_for), selectedDate);
+                  })
+                  .sort((a, b) => {
+                    if (!a.scheduled_for || !b.scheduled_for) return 0;
+                    return new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime();
+                  })
+                  .map((post) => (
+                    <div
+                      key={post.id}
+                      className="flex items-center justify-between p-4 rounded-lg bg-secondary/30 border border-border hover:bg-secondary/50 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0 mr-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium text-primary px-2 py-0.5 rounded-full bg-primary/10">
+                            {post.scheduled_for && format(parseISO(post.scheduled_for), "MMM d, h:mm a")}
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground line-clamp-1">{post.content}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleUnschedule(post.id)}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        Unschedule
+                      </Button>
+                    </div>
+                  ))}
+                {posts.filter(post => post.status === 'scheduled' && selectedDate && post.scheduled_for && isSameDay(parseISO(post.scheduled_for), selectedDate)).length === 0 && selectedDate && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No posts scheduled for this specific date.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <Clock className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                <p>No upcoming posts scheduled</p>
+                <Button
+                  variant="link"
+                  onClick={() => navigate('/create')}
+                  className="mt-2"
+                >
+                  Schedule your first post
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Schedule Post Dialog */}
@@ -387,6 +460,12 @@ export default function Schedule() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SubscriptionModal
+        open={showSubscriptionModal}
+        onOpenChange={setShowSubscriptionModal}
+        currentUsage={usageCount}
+      />
     </AppLayout>
   );
 }

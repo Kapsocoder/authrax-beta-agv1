@@ -11,45 +11,51 @@ import { usePosts, Post } from "@/hooks/usePosts";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useProfile } from "@/hooks/useProfile";
+import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
 
 export default function Drafts() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { posts, deletePost, isLoading } = usePosts();
   const [searchQuery, setSearchQuery] = useState("");
+  const { isPro, usageCount } = useProfile();
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   // Filter only drafts
   const drafts = useMemo(() => {
     return posts
       .filter(post => post.status === "draft")
-      .filter(post => 
-        searchQuery === "" || 
+      .filter(post =>
+        searchQuery === "" ||
         post.content.toLowerCase().includes(searchQuery.toLowerCase())
       );
   }, [posts, searchQuery]);
 
   const handleEdit = (post: Post) => {
-    if (post.is_ai_generated) {
-      // Has generated content - go to Edit Post screen
-      navigate("/create", { 
-        state: { 
-          mode: "edit",
-          postId: post.id,
-          content: post.content,
-          aiPrompt: post.ai_prompt 
-        } 
-      });
-    } else {
-      // No generated content - go to Studio to continue working
-      navigate("/create", {
-        state: {
-          mode: "resume",
-          postId: post.id,
-          content: post.content,
-          sourceType: post.ai_prompt // ai_prompt stores the source type for non-generated drafts
-        }
-      });
+    navigate("/create", {
+      state: {
+        mode: post.is_ai_generated ? "edit" : "resume",
+        postId: post.id,
+        content: post.content,
+        aiPrompt: post.ai_prompt,
+        // Pass new fields for full state restoration
+        templateId: post.template_id,
+        sourceType: post.input_mode,
+        inputContext: post.input_context,
+        sourceUrl: post.source_url
+      }
+    });
+  };
+
+  const handleCreateNew = () => {
+    // Check draft limit
+    const currentDraftsCount = posts.filter(p => p.status === 'draft').length;
+    if (!isPro && currentDraftsCount >= 10) {
+      setShowSubscriptionModal(true);
+      return;
     }
+    navigate("/create");
   };
 
   const handleDelete = async (postId: string) => {
@@ -92,7 +98,7 @@ export default function Drafts() {
               {drafts.length} draft{drafts.length !== 1 ? "s" : ""} saved
             </p>
           </div>
-          <Button variant="gradient" onClick={() => navigate("/create")}>
+          <Button variant="gradient" onClick={handleCreateNew}>
             <Plus className="w-4 h-4 mr-2" />
             New Post
           </Button>
@@ -132,7 +138,7 @@ export default function Drafts() {
               <p className="text-muted-foreground mb-4">
                 {searchQuery ? "No drafts match your search" : "Start creating content and your drafts will appear here"}
               </p>
-              <Button variant="gradient" onClick={() => navigate("/create")}>
+              <Button variant="gradient" onClick={handleCreateNew}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Your First Post
               </Button>
@@ -143,8 +149,8 @@ export default function Drafts() {
             {drafts.map((draft) => {
               const ContentIcon = getContentTypeIcon(draft);
               return (
-                <Card 
-                  key={draft.id} 
+                <Card
+                  key={draft.id}
                   className="bg-card border-border hover:border-primary/50 transition-all hover:shadow-md group"
                 >
                   <CardContent className="p-5">
@@ -173,17 +179,17 @@ export default function Drafts() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 pt-3 border-t border-border">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="flex-1 gap-1"
                         onClick={() => handleEdit(draft)}
                       >
                         <Edit3 className="w-3 h-3" />
                         Edit
                       </Button>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="icon-sm"
                         className="text-muted-foreground hover:text-destructive"
                         onClick={() => handleDelete(draft.id)}
@@ -222,6 +228,11 @@ export default function Drafts() {
           </CardContent>
         </Card>
       </div>
+      <SubscriptionModal
+        open={showSubscriptionModal}
+        onOpenChange={setShowSubscriptionModal}
+        currentUsage={usageCount}
+      />
     </AppLayout>
   );
 }

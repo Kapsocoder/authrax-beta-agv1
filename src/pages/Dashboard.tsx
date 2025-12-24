@@ -1,13 +1,13 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { 
-  PenSquare, 
-  TrendingUp, 
-  Calendar, 
-  Sparkles, 
-  ArrowRight, 
-  Zap, 
-  Clock, 
+import {
+  PenSquare,
+  TrendingUp,
+  Calendar,
+  Sparkles,
+  ArrowRight,
+  Zap,
+  Clock,
   Target,
   Mic,
   Edit3,
@@ -74,8 +74,8 @@ export default function Dashboard() {
 
   if (showOnboarding) {
     return (
-      <OnboardingFlow 
-        onComplete={() => setShowOnboarding(false)} 
+      <OnboardingFlow
+        onComplete={() => setShowOnboarding(false)}
         isLinkedInLogin={isLinkedInOnboarding}
       />
     );
@@ -157,11 +157,22 @@ export default function Dashboard() {
     },
   ];
 
-  const postsThisWeek = posts?.filter(p => {
+  const postsThisWeek = useMemo(() => {
+    if (!posts) return 0;
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
-    return p.status === "published" && new Date(p.published_at || p.created_at) > weekAgo;
-  }).length || 0;
+
+    return posts.filter(p => {
+      // Strict check for published status
+      if (p.status !== "published") return false;
+
+      // Use published_at, falling back to updated_at if missing (e.g. legacy data)
+      // We avoid created_at because an old draft published today should count
+      const publishDate = p.published_at ? new Date(p.published_at) : new Date(p.updated_at);
+
+      return publishDate > weekAgo;
+    }).length;
+  }, [posts]);
 
   const scheduledCount = posts?.filter(p => p.status === "scheduled").length || 0;
   const voiceScore = voiceProfile?.is_trained ? "85%" : "Train";
@@ -175,7 +186,7 @@ export default function Dashboard() {
 
   const userName = user?.user_metadata?.full_name || profile?.full_name || user?.email?.split('@')[0] || "there";
 
-  const trendingTopics = topics.length > 0 
+  const trendingTopics = topics.length > 0
     ? topics.filter(t => t.is_active).map(t => t.name)
     : ["AI in Business", "Leadership", "Remote Work", "Career Growth", "Productivity", "Tech Trends"];
 
@@ -196,7 +207,7 @@ export default function Dashboard() {
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
-    
+
     if (diffDays > 0) return `${diffDays}d ago`;
     if (diffHours > 0) return `${diffHours}h ago`;
     return "Just now";
@@ -207,13 +218,13 @@ export default function Dashboard() {
   const handleEditDraft = (draft: Post) => {
     if (draft.is_ai_generated) {
       // Has generated content - go to Edit Post screen
-      navigate("/create", { 
-        state: { 
+      navigate("/create", {
+        state: {
           mode: "edit",
           postId: draft.id,
           content: draft.content,
-          aiPrompt: draft.ai_prompt 
-        } 
+          aiPrompt: draft.ai_prompt
+        }
       });
     } else {
       // No generated content - go to Studio to continue working
@@ -271,8 +282,8 @@ export default function Dashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {stats.map((stat) => (
-            <Card 
-              key={stat.label} 
+            <Card
+              key={stat.label}
               className="bg-card border-border cursor-pointer hover:border-primary/50 transition-all hover:shadow-md"
               onClick={() => navigate(stat.path, { state: (stat as any).state })}
             >
@@ -338,11 +349,11 @@ export default function Dashboard() {
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                     </div>
-                  ) : (trendingData?.news?.slice(0, 5) || []).length === 0 ? (
+                  ) : (trendingData?.news?.slice(0, 3) || []).length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">No news found for your topics</p>
                   ) : (
-                    (trendingData?.news?.slice(0, 5) || []).map((news, index) => (
-                      <div 
+                    (trendingData?.news?.slice(0, 3) || []).map((news, index) => (
+                      <div
                         key={`${news.link}-${index}`}
                         className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/50 cursor-pointer transition-all"
                         onClick={() => window.open(news.link, "_blank")}
@@ -379,11 +390,11 @@ export default function Dashboard() {
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                     </div>
-                  ) : (trendingData?.posts?.slice(0, 5) || []).length === 0 ? (
+                  ) : (trendingData?.posts?.slice(0, 3) || []).length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">No discussions found for your topics</p>
                   ) : (
-                    (trendingData?.posts?.slice(0, 5) || []).map((post, index) => (
-                      <div 
+                    (trendingData?.posts?.slice(0, 3) || []).map((post, index) => (
+                      <div
                         key={`${post.permalink}-${index}`}
                         className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/50 cursor-pointer transition-all"
                         onClick={() => window.open(post.permalink, "_blank")}
@@ -413,7 +424,7 @@ export default function Dashboard() {
 
         {/* Trending Templates */}
         <div className="mb-8">
-          <TrendingTemplates />
+          <TrendingTemplates maxItems={3} />
         </div>
 
         {/* Recent Drafts */}
@@ -441,7 +452,7 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-3">
                 {recentDrafts.map((draft) => (
-                  <div 
+                  <div
                     key={draft.id}
                     className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/50 cursor-pointer transition-all"
                     onClick={() => handleEditDraft(draft)}

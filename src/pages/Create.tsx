@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { 
-  ArrowLeft, 
-  Eye, 
-  Wand2, 
-  Save, 
-  Send, 
-  Clock, 
-  ChevronDown, 
-  Loader2, 
+import {
+  ArrowLeft,
+  Eye,
+  Wand2,
+  Save,
+  Send,
+  Clock,
+  ChevronDown,
+  Loader2,
   Sparkles,
   Mic,
   Upload,
@@ -27,6 +27,7 @@ import { LinkedInPreview } from "@/components/post/LinkedInPreview";
 import { ToneSelector, ToneOption } from "@/components/studio/ToneSelector";
 import { TrendingTemplates } from "@/components/templates/TrendingTemplates";
 import { AIAssistDialog } from "@/components/studio/AIAssistDialog";
+import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
 import { TemplateLibraryDialog } from "@/components/templates/TemplateLibraryDialog";
 import { TemplateCard } from "@/components/templates/TemplateCard";
 import { FloatingVoiceBar } from "@/components/studio/FloatingVoiceBar";
@@ -65,11 +66,11 @@ export default function Create() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { user, signOut } = useAuth();
-  const { profile } = useProfile();
+  const { profile, checkUsageLimit, incrementUsage, usageCount } = useProfile();
   const { createPost, updatePost } = usePosts();
   const { generatePost, regeneratePost, isGenerating } = useAIGeneration();
   const { data: allTemplates = [] } = useTemplates();
-  
+
   // Mode from navigation state
   const initialMode = (location.state?.mode as StudioMode | "edit" | "resume" | "template") || null;
   const initialTopic = searchParams.get("topic") || "";
@@ -78,14 +79,19 @@ export default function Create() {
   const prefilledContent = location.state?.prefilledContent as string | undefined;
   const resumePostId = location.state?.postId as string | undefined;
   const resumeSourceType = location.state?.sourceType as string | undefined;
+  const resumeTemplateId = location.state?.templateId as string | undefined;
+  const resumeInputContext = location.state?.inputContext as string | undefined;
+  const resumeSourceUrl = location.state?.sourceUrl as string | undefined;
+  const aiPrompt = location.state?.aiPrompt as string | undefined;
 
   // Handle resume mode - convert sourceType back to mode
   const getInitialModeFromResume = (): StudioMode => {
-    if (initialMode === "resume" && resumeSourceType) {
-      if (resumeSourceType.includes("voice")) return "voice";
-      if (resumeSourceType.includes("url") || resumeSourceType.includes("Source:")) return "url";
-      if (resumeSourceType.includes("video")) return "video";
-      if (resumeSourceType.includes("pdf")) return "pdf";
+    // Both resume and edit modes should restore the input mode
+    if ((initialMode === "resume" || initialMode === "edit") && resumeSourceType) {
+      if (resumeSourceType === "voice" || resumeSourceType.includes("voice")) return "voice";
+      if (resumeSourceType === "url" || resumeSourceType.includes("url") || resumeSourceType.includes("Source:")) return "url";
+      if (resumeSourceType === "video" || resumeSourceType.includes("video")) return "video";
+      if (resumeSourceType === "pdf" || resumeSourceType.includes("pdf")) return "pdf";
       if (resumeSourceType === "draft") return "draft";
     }
     // template mode should go to studio (null mode) but with template pre-selected
@@ -94,10 +100,14 @@ export default function Create() {
 
   const [mode, setMode] = useState<StudioMode>(getInitialModeFromResume());
   const [capturedContent, setCapturedContent] = useState(
-    prefilledContent || (initialMode === "resume" ? (location.state?.content as string || "") : "")
+    prefilledContent ||
+    (initialMode === "resume" ? (location.state?.content as string || "") : "") ||
+    aiPrompt ||
+    ""
   );
-  const [additionalContext, setAdditionalContext] = useState("");
+
   const [generatedContent, setGeneratedContent] = useState(
+    // In edit mode, content is the generated post. In resume mode, it might be empty.
     initialMode === "edit" ? (location.state?.content as string || "") : ""
   );
   const [selectedTone, setSelectedTone] = useState<ToneOption>("professional");
@@ -106,14 +116,37 @@ export default function Create() {
   const [showTemplatePreview, setShowTemplatePreview] = useState<Template | null>(null);
   const [activeTab, setActiveTab] = useState("write");
   const [showAIDialog, setShowAIDialog] = useState(false);
-  const [urlInput, setUrlInput] = useState("");
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [urlInput, setUrlInput] = useState(
+    resumeSourceUrl ||
+      ((initialMode === "resume" || initialMode === "edit") && aiPrompt?.includes("Source:"))
+      ? (aiPrompt?.replace("Source: ", "") || "")
+      : ""
+  );
+
+  // Use captured content as additional context for URL modes when resuming
+  const [additionalContext, setAdditionalContext] = useState(
+    resumeInputContext ||
+      ((initialMode === "resume" || initialMode === "edit") && (resumeSourceType?.includes("url") || resumeSourceType?.includes("video")))
+      ? (location.state?.content as string || "")
+      : ""
+  );
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(resumePostId || null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [lastSavedContent, setLastSavedContent] = useState<string>("");
   const [localHasUnsavedChanges, setLocalHasUnsavedChanges] = useState(false);
+
+  // Track last used generation params to disable regenerate if no changes
+  const [lastGenerationParams, setLastGenerationParams] = useState<{
+    content: string;
+    context: string;
+    tone: string;
+    templateId: string | null;
+  } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveDraftRef = useRef<() => Promise<void>>();
-  
+
   // Global navigation guard
   const { setHasUnsavedChanges, setOnSave } = useNavigationGuard();
 
@@ -136,7 +169,7 @@ export default function Create() {
         e.returnValue = '';
       }
     };
-    
+
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [localHasUnsavedChanges, generatedContent]);
@@ -156,23 +189,38 @@ export default function Create() {
 
   // Auto-save draft when content is captured (but NOT when editing an existing post)
   const isEditingExisting = initialMode === "edit" || initialMode === "resume";
-  const autoSaveContent = mode === "url" || mode === "video" ? urlInput : capturedContent;
+
+  // For URL/Video modes, we save additionalContext as the content
+  const autoSaveContent = (mode === "url" || mode === "video" || mode === "pdf")
+    ? additionalContext
+    : capturedContent;
+
   const { hasAutoSaved, reset: resetAutoSave } = useAutoSaveDraft({
     content: autoSaveContent,
     sourceUrl: urlInput || undefined,
     sourceType: mode,
-    enabled: autoSaveContent.length > 10 && !isEditingExisting,
+    templateId: selectedTemplate?.id || null,
+    inputContext: additionalContext,
+    // Enable if there is ANY content (URL or text) that is substantial enough
+    // Allow auto-save for updates to existing drafts (edit/resume) too
+    enabled: (
+      autoSaveContent.length >= 5 ||
+      (urlInput.length >= 5)
+    ),
+    currentDraftId: currentDraftId,
+    onDraftCreated: (id) => setCurrentDraftId(id)
   });
 
   // Set initial template from URL/state once templates are loaded
   useEffect(() => {
-    if (initialTemplateId && allTemplates.length > 0 && !selectedTemplate) {
-      const found = allTemplates.find(t => t.id === initialTemplateId);
+    const targetTemplateId = initialTemplateId || resumeTemplateId;
+    if (targetTemplateId && allTemplates.length > 0 && !selectedTemplate) {
+      const found = allTemplates.find(t => t.id === targetTemplateId);
       if (found) {
         setSelectedTemplate(found);
       }
     }
-  }, [initialTemplateId, allTemplates, selectedTemplate]);
+  }, [initialTemplateId, resumeTemplateId, allTemplates, selectedTemplate]);
 
   // If coming from schedule with content, go straight to editor
   useEffect(() => {
@@ -188,6 +236,11 @@ export default function Create() {
   const hasCapturedContent = capturedContent.length > 0 || urlInput.length > 0 || uploadedFileName !== null;
 
   const handleGeneratePost = async () => {
+    if (!checkUsageLimit()) {
+      setShowSubscriptionModal(true);
+      return;
+    }
+
     let prompt = capturedContent;
     let generationType: "topic" | "url" | "voice" | "repurpose" = "topic";
 
@@ -238,9 +291,33 @@ export default function Create() {
         voiceTranscript: mode === "voice" ? capturedContent : undefined,
       });
       setGeneratedContent(result);
-      
+
+      // Update last generation params
+      setLastGenerationParams({
+        content: capturedContent || urlInput,
+        context: additionalContext,
+        tone: selectedTone,
+        templateId: selectedTemplate?.id || null,
+      });
+
       // Auto-save as draft on first generation
-      if (!currentDraftId) {
+      // Save generated content to draft
+      if (currentDraftId) {
+        try {
+          await updatePost.mutateAsync({
+            id: currentDraftId,
+            content: result,
+            is_ai_generated: true,
+            status: "draft",
+          });
+          toast.success("Draft updated with generated content");
+          setLastSavedContent(result);
+          setHasUnsavedChanges(false);
+        } catch (error) {
+          console.error("Failed to update draft:", error);
+          toast.error("Failed to save draft update");
+        }
+      } else {
         try {
           const newPost = await createPost.mutateAsync({
             content: result,
@@ -256,10 +333,8 @@ export default function Create() {
           toast.success("Post generated!");
           console.error("Failed to auto-save draft:", saveError);
         }
-      } else {
-        toast.success("Post generated!");
-        setHasUnsavedChanges(true);
       }
+      incrementUsage.mutate();
     } catch (error) {
       // Error handled in hook
     }
@@ -270,7 +345,7 @@ export default function Create() {
       toast.error("Generate content first!");
       return;
     }
-    
+
     try {
       if (currentDraftId) {
         // Update existing draft
@@ -300,12 +375,25 @@ export default function Create() {
     saveDraftRef.current = handleSaveDraft;
   }, [handleSaveDraft]);
 
-  const handleSchedule = () => {
+  const handleSchedule = async () => {
     if (!generatedContent.trim()) {
       toast.error("Generate content first!");
       return;
     }
-    navigate("/schedule", { state: { content: generatedContent } });
+    // Schedule action is final step in /schedule page, but clicking "Schedule" here initiates flow.
+    // However, user said "Limit applies to... Scheduling Posts". 
+    // Usually the limit should be at the point of *commitment*.
+    // Since /schedule page handles the actual scheduling, we should enforce it there.
+    // But if we want to block entry, we can do it here too.
+    // Let's rely on /schedule page for the actual "Schedule" action limit, 
+    // but we can check here to prevent navigation if they are already over limit?
+    // User might want to see calendar. Let's leave check to /schedule page's confirm button.
+    navigate("/schedule", {
+      state: {
+        content: generatedContent,
+        postId: currentDraftId // Pass the draft ID so Schedule page can update it instead of creating new
+      }
+    });
   };
 
   const handleCopyToClipboard = async () => {
@@ -368,7 +456,7 @@ export default function Create() {
         tone: params.tone,
         templatePrompt,
       });
-      
+
       setGeneratedContent(result);
       setHasUnsavedChanges(true);
       setShowAIDialog(false);
@@ -383,150 +471,10 @@ export default function Create() {
     setCapturedContent(text);
   }, []);
 
-  const userName = profile?.full_name || user?.user_metadata?.full_name || "Your Name";
+  const userName = profile?.full_name || (user as any)?.user_metadata?.full_name || "Your Name";
   const userHeadline = profile?.headline || "Professional";
 
-  // If we have generated content, show the editor
-  if (hasGeneratedContent) {
-    return (
-      <AppLayout onLogout={signOut}>
-        <div className="min-h-screen animate-fade-in">
-          {/* Header */}
-          <header className="sticky top-0 z-40 glass-strong border-b border-border/50 px-4 py-3">
-            <div className="max-w-6xl mx-auto flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setGeneratedContent("")}
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-                <h1 className="font-semibold text-foreground">Edit Post</h1>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleSaveDraft}
-                  disabled={createPost.isPending || updatePost.isPending || !localHasUnsavedChanges}
-                  className={cn(
-                    "transition-all",
-                    localHasUnsavedChanges 
-                      ? "border-primary text-primary hover:bg-primary/10" 
-                      : "opacity-60"
-                  )}
-                >
-                  {(createPost.isPending || updatePost.isPending) ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-2" />
-                  )}
-                  Save Draft
-                </Button>
-                
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="gradient" size="sm">
-                      Publish
-                      <ChevronDown className="w-4 h-4 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={handleCopyToClipboard}>
-                      <Send className="w-4 h-4 mr-2" />
-                      Copy & Post
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleSchedule}>
-                      <Clock className="w-4 h-4 mr-2" />
-                      Schedule
-                    </DropdownMenuItem>
-                    <DropdownMenuItem disabled>
-                      <Wand2 className="w-4 h-4 mr-2" />
-                      Post Now (Soon)
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          </header>
-
-          <div className="max-w-6xl mx-auto p-4 md:p-8">
-            {/* Tone indicator */}
-            <div className="mb-4 flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">Tone:</span>
-              <ToneSelector selected={selectedTone} onChange={setSelectedTone} />
-            </div>
-
-            {/* Mobile Tabs */}
-            <div className="md:hidden">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                  <TabsTrigger value="write">Write</TabsTrigger>
-                  <TabsTrigger value="preview" className="flex items-center gap-2">
-                    <Eye className="w-4 h-4" />
-                    Preview
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="write">
-                  <PostEditor
-                    value={generatedContent}
-                    onChange={setGeneratedContent}
-                    onGenerateAI={() => setShowAIDialog(true)}
-                    isGenerating={isGenerating}
-                    placeholder="Refine your post..."
-                  />
-                </TabsContent>
-                <TabsContent value="preview">
-                  <LinkedInPreview
-                    content={generatedContent}
-                    authorName={userName}
-                    authorTitle={userHeadline}
-                  />
-                </TabsContent>
-              </Tabs>
-            </div>
-
-            {/* Desktop Split View */}
-            <div className="hidden md:grid md:grid-cols-2 gap-8">
-              <div>
-                <h2 className="text-sm font-medium text-muted-foreground mb-3">Editor</h2>
-                <PostEditor
-                  value={generatedContent}
-                  onChange={setGeneratedContent}
-                  onGenerateAI={() => setShowAIDialog(true)}
-                  isGenerating={isGenerating}
-                  placeholder="Refine your post..."
-                />
-              </div>
-              <div>
-                <h2 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
-                  <Eye className="w-4 h-4" />
-                  LinkedIn Preview
-                </h2>
-                <LinkedInPreview
-                  content={generatedContent}
-                  authorName={userName}
-                  authorTitle={userHeadline}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* AI Assist Dialog */}
-          <AIAssistDialog
-            open={showAIDialog}
-            onOpenChange={setShowAIDialog}
-            selectedTone={selectedTone}
-            onToneChange={setSelectedTone}
-            onRegenerate={handleRegenerateAI}
-            isGenerating={isGenerating}
-          />
-        </div>
-      </AppLayout>
-    );
-  }
 
   // Studio - Capture & Generate mode
   return (
@@ -552,6 +500,55 @@ export default function Create() {
                 {mode === "pdf" && "From PDF"}
                 {!mode && "Content Studio"}
               </h1>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {hasGeneratedContent && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSaveDraft}
+                    disabled={createPost.isPending || updatePost.isPending || !localHasUnsavedChanges}
+                    className={cn(
+                      "transition-all hidden md:flex",
+                      localHasUnsavedChanges
+                        ? "border-primary text-primary hover:bg-primary/10"
+                        : "opacity-60"
+                    )}
+                  >
+                    {(createPost.isPending || updatePost.isPending) ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-2" />
+                    )}
+                    Save Draft
+                  </Button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="gradient" size="sm">
+                        Publish
+                        <ChevronDown className="w-4 h-4 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={handleCopyToClipboard}>
+                        <Send className="w-4 h-4 mr-2" />
+                        Copy & Post
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleSchedule}>
+                        <Clock className="w-4 h-4 mr-2" />
+                        Schedule
+                      </DropdownMenuItem>
+                      <DropdownMenuItem disabled>
+                        <Wand2 className="w-4 h-4 mr-2" />
+                        Post Now (Soon)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              )}
             </div>
           </div>
         </header>
@@ -619,7 +616,9 @@ export default function Create() {
               </Card>
 
               {/* Trending Templates */}
-              <TrendingTemplates onSelectTemplate={handleTemplatePreview} />
+              {!selectedTemplate && (
+                <TrendingTemplates onSelectTemplate={handleTemplatePreview} />
+              )}
             </>
           )}
 
@@ -781,7 +780,7 @@ Example:
                   onChange={handleFileUpload}
                   className="hidden"
                 />
-                
+
                 {uploadedFileName ? (
                   <div className="flex items-center justify-between p-4 rounded-lg bg-primary/10 border border-primary/30">
                     <div className="flex items-center gap-3">
@@ -871,8 +870,8 @@ Example:
           )}
 
           {/* Trending Templates - show preview on click in Studio, only when mode is selected */}
-          {mode && (
-            <TrendingTemplates 
+          {mode && !selectedTemplate && (
+            <TrendingTemplates
               onSelectTemplate={handleTemplatePreview}
               maxItems={6}
               showPreviewFirst
@@ -891,8 +890,8 @@ Example:
           {mode && (
             <div className="flex gap-3">
               {!selectedTemplate && (
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="flex-1"
                   onClick={() => setShowTemplateLibrary(true)}
                 >
@@ -900,12 +899,21 @@ Example:
                   Choose Template
                 </Button>
               )}
-              
+
               <Button
                 variant="gradient"
                 className="flex-1"
                 onClick={handleGeneratePost}
-                disabled={isGenerating || (!hasCapturedContent && mode !== "url" && mode !== "video")}
+                disabled={
+                  isGenerating ||
+                  (!hasCapturedContent && mode !== "url" && mode !== "video") ||
+                  (hasGeneratedContent && lastGenerationParams &&
+                    lastGenerationParams.content === (capturedContent || urlInput) &&
+                    lastGenerationParams.context === additionalContext &&
+                    lastGenerationParams.tone === selectedTone &&
+                    lastGenerationParams.templateId === (selectedTemplate?.id || null)
+                  )
+                }
               >
                 {isGenerating ? (
                   <>
@@ -915,18 +923,89 @@ Example:
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Post
+                    {hasGeneratedContent ? "Regenerate" : "Generate Post"}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </>
                 )}
               </Button>
             </div>
           )}
+
+          {/* Editor Section - Visible after generation */}
+          {hasGeneratedContent && (
+            <div className="mt-8 pt-8 border-t border-border animate-fade-in text-left">
+              <h2 className="text-xl font-semibold mb-6">Your Post</h2>
+
+              {/* Mobile Tabs */}
+              <div className="md:hidden">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="write">Write</TabsTrigger>
+                    <TabsTrigger value="preview" className="flex items-center gap-2">
+                      <Eye className="w-4 h-4" />
+                      Preview
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="write">
+                    <PostEditor
+                      value={generatedContent}
+                      onChange={setGeneratedContent}
+                      onGenerateAI={() => setShowAIDialog(true)}
+                      isGenerating={isGenerating}
+                      placeholder="Refine your post..."
+                    />
+                  </TabsContent>
+                  <TabsContent value="preview">
+                    <LinkedInPreview
+                      content={generatedContent}
+                      authorName={userName}
+                      authorTitle={userHeadline}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </div>
+
+              {/* Desktop Split View */}
+              <div className="hidden md:grid md:grid-cols-2 gap-8">
+                <div>
+                  <h2 className="text-sm font-medium text-muted-foreground mb-3">Editor</h2>
+                  <PostEditor
+                    value={generatedContent}
+                    onChange={setGeneratedContent}
+                    onGenerateAI={() => setShowAIDialog(true)}
+                    isGenerating={isGenerating}
+                    placeholder="Refine your post..."
+                  />
+                </div>
+                <div>
+                  <h2 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                    <Eye className="w-4 h-4" />
+                    LinkedIn Preview
+                  </h2>
+                  <LinkedInPreview
+                    content={generatedContent}
+                    authorName={userName}
+                    authorTitle={userHeadline}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* AI Assist Dialog - ensure it's here since we removed the other instance */}
+        <AIAssistDialog
+          open={showAIDialog}
+          onOpenChange={setShowAIDialog}
+          selectedTone={selectedTone}
+          onToneChange={setSelectedTone}
+          onRegenerate={handleRegenerateAI}
+          isGenerating={isGenerating}
+        />
 
         {/* Floating Voice Bar - only show in voice mode */}
         {mode === "voice" && (
-          <FloatingVoiceBar 
+          <FloatingVoiceBar
             onTranscriptUpdate={handleVoiceTranscriptUpdate}
             autoStart={true}
           />
@@ -1008,6 +1087,11 @@ Example:
             </DialogContent>
           </Dialog>
         )}
+        <SubscriptionModal
+          open={showSubscriptionModal}
+          onOpenChange={setShowSubscriptionModal}
+          currentUsage={usageCount}
+        />
       </div>
     </AppLayout>
   );

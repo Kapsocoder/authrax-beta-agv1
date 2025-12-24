@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "@/firebaseConfig";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
 
@@ -22,42 +24,42 @@ export interface VoiceProfile {
 }
 
 export function useVoiceProfile() {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const voiceProfileQuery = useQuery({
-    queryKey: ["voice-profile", user?.id],
+    queryKey: ["voice-profile", user?.uid],
     queryFn: async () => {
-      if (!user?.id) return null;
-      
-      const { data, error } = await supabase
-        .from("voice_profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      
-      if (error) throw error;
-      return data as VoiceProfile | null;
+      if (!user?.uid) return null;
+
+      const docRef = doc(db, "users", user.uid, "voice_profiles", "default");
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as VoiceProfile;
+      }
+      return null;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.uid,
   });
 
   const updateVoiceProfile = useMutation({
     mutationFn: async (updates: Partial<VoiceProfile>) => {
-      if (!user?.id) throw new Error("Not authenticated");
-      
-      const { data, error } = await supabase
-        .from("voice_profiles")
-        .update(updates)
-        .eq("user_id", user.id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data as VoiceProfile;
+      if (!user?.uid) throw new Error("Not authenticated");
+
+      const docRef = doc(db, "users", user.uid, "voice_profiles", "default");
+      const resolvedUpdates = {
+        ...updates,
+        user_id: user.uid,
+        updated_at: new Date().toISOString()
+      };
+
+      await setDoc(docRef, resolvedUpdates, { merge: true });
+
+      return { ...resolvedUpdates } as VoiceProfile;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["voice-profile", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["voice-profile", user?.uid] });
       toast.success("Voice profile updated!");
     },
     onError: (error) => {
@@ -67,21 +69,16 @@ export function useVoiceProfile() {
 
   const analyzeVoice = useMutation({
     mutationFn: async (posts: string[]) => {
-      if (!user?.id || !session?.access_token) {
+      if (!user?.uid) {
         throw new Error("Not authenticated");
       }
-      
-      const { data, error } = await supabase.functions.invoke("analyze-voice", {
-        body: { posts, userId: user.id },
-      });
-      
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
-      
-      return data;
+
+      const analyzeFn = httpsCallable(functions, 'analyzeVoice');
+      const result = await analyzeFn({ posts, userId: user.uid });
+      return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["voice-profile", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["voice-profile", user?.uid] });
       toast.success("Voice profile updated successfully!");
     },
     onError: (error) => {

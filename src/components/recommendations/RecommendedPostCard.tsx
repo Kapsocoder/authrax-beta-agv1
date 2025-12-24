@@ -9,16 +9,17 @@ interface RecommendedPostCardProps {
   onUse: (post: RecommendedPost) => void;
   onDelete?: (postId: string) => void;
   compact?: boolean;
+  disabled?: boolean;
 }
 
-export function RecommendedPostCard({ post, onUse, onDelete, compact = false }: RecommendedPostCardProps) {
+export function RecommendedPostCard({ post, onUse, onDelete, compact = false, disabled = false }: RecommendedPostCardProps) {
   const formatTimeAgo = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
-    
+
     if (diffDays > 0) return `${diffDays}d ago`;
     if (diffHours > 0) return `${diffHours}h ago`;
     return "Just now";
@@ -26,9 +27,9 @@ export function RecommendedPostCard({ post, onUse, onDelete, compact = false }: 
 
   if (compact) {
     return (
-      <Card 
-        className="cursor-pointer hover:border-primary/50 transition-all hover:shadow-md group"
-        onClick={() => onUse(post)}
+      <Card
+        className={`cursor-pointer hover:border-primary/50 transition-all hover:shadow-md group ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
+        onClick={() => !disabled && onUse(post)}
       >
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-2">
@@ -84,7 +85,7 @@ export function RecommendedPostCard({ post, onUse, onDelete, compact = false }: 
         <h3 className="font-semibold text-foreground mb-2 line-clamp-2">
           {post.title}
         </h3>
-        
+
         <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
           {post.content.substring(0, 150)}...
         </p>
@@ -101,9 +102,10 @@ export function RecommendedPostCard({ post, onUse, onDelete, compact = false }: 
             size="sm"
             className="flex-1"
             onClick={() => onUse(post)}
+            disabled={disabled}
           >
-            Use This Post
-            <ArrowRight className="w-4 h-4 ml-1" />
+            {disabled ? "Limit Reached" : "Use This Post"}
+            {!disabled && <ArrowRight className="w-4 h-4 ml-1" />}
           </Button>
           {post.source_url && (
             <Button

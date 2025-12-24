@@ -5,11 +5,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useVoiceProfile } from "@/hooks/useVoiceProfile";
 import { useProfile } from "@/hooks/useProfile";
-import { 
-  Linkedin, 
-  FileText, 
-  PenLine, 
-  ArrowRight, 
+import {
+  Linkedin,
+  FileText,
+  PenLine,
+  ArrowRight,
   ArrowLeft,
   Check,
   Upload,
@@ -18,7 +18,7 @@ import {
   Loader2
 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+// import { supabase } from "@/integrations/supabase/client"; // Removed
 
 type OnboardingStep = "link-linkedin" | "data-export" | "manual-paste" | "analyzing" | "complete";
 
@@ -33,11 +33,14 @@ export function OnboardingFlow({ onComplete, isLinkedInLogin = false }: Onboardi
   );
   const [pastedPosts, setPastedPosts] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  
+
   const { analyzeVoice } = useVoiceProfile();
   const { completeOnboarding, updateProfile } = useProfile();
 
   const handleLinkLinkedIn = async () => {
+    // TODO: Implement Firebase LinkedIn Auth
+    toast.info("LinkedIn integration via Firebase coming soon. Please skip for now.");
+    /*
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "linkedin_oidc",
       options: {
@@ -48,6 +51,7 @@ export function OnboardingFlow({ onComplete, isLinkedInLogin = false }: Onboardi
     if (error) {
       toast.error("Failed to link LinkedIn: " + error.message);
     }
+    */
   };
 
   const handleSkipToExport = () => {
@@ -63,15 +67,15 @@ export function OnboardingFlow({ onComplete, isLinkedInLogin = false }: Onboardi
       .split(/\n{2,}/)
       .map(p => p.trim())
       .filter(p => p.length > 50);
-    
+
     if (posts.length < 3) {
       toast.error("Please paste at least 3 posts (separated by blank lines)");
       return;
     }
-    
+
     setIsAnalyzing(true);
     setCurrentStep("analyzing");
-    
+
     try {
       await analyzeVoice.mutateAsync(posts);
       await updateProfile.mutateAsync({ onboarding_completed: true });
@@ -124,7 +128,7 @@ export function OnboardingFlow({ onComplete, isLinkedInLogin = false }: Onboardi
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button 
+              <Button
                 onClick={handleLinkLinkedIn}
                 className="w-full bg-[#0A66C2] hover:bg-[#004182] text-white"
                 size="lg"
@@ -132,7 +136,7 @@ export function OnboardingFlow({ onComplete, isLinkedInLogin = false }: Onboardi
                 <Linkedin className="w-5 h-5 mr-2" />
                 Connect LinkedIn
               </Button>
-              
+
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t border-border" />
@@ -141,18 +145,18 @@ export function OnboardingFlow({ onComplete, isLinkedInLogin = false }: Onboardi
                   <span className="bg-card px-2 text-muted-foreground">or</span>
                 </div>
               </div>
-              
-              <Button 
-                variant="outline" 
+
+              <Button
+                variant="outline"
                 onClick={handleSkipToExport}
                 className="w-full"
               >
                 Use Data Export Instead
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
-              
-              <Button 
-                variant="ghost" 
+
+              <Button
+                variant="ghost"
                 onClick={handleSkipOnboarding}
                 className="w-full text-muted-foreground"
               >
@@ -182,7 +186,7 @@ export function OnboardingFlow({ onComplete, isLinkedInLogin = false }: Onboardi
                   <li>Select "Posts" and click "Request archive"</li>
                   <li>Download when ready (usually within 24 hours)</li>
                 </ol>
-                <a 
+                <a
                   href="https://www.linkedin.com/mypreferences/d/download-my-data"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -192,12 +196,12 @@ export function OnboardingFlow({ onComplete, isLinkedInLogin = false }: Onboardi
                   <ExternalLink className="w-3 h-3 ml-1" />
                 </a>
               </div>
-              
+
               <Button variant="outline" className="w-full" disabled>
                 <Upload className="w-4 h-4 mr-2" />
                 Upload ZIP/CSV (Coming Soon)
               </Button>
-              
+
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t border-border" />
@@ -206,26 +210,26 @@ export function OnboardingFlow({ onComplete, isLinkedInLogin = false }: Onboardi
                   <span className="bg-card px-2 text-muted-foreground">or</span>
                 </div>
               </div>
-              
-              <Button 
+
+              <Button
                 onClick={handleSkipToManual}
                 className="w-full"
               >
                 <PenLine className="w-4 h-4 mr-2" />
                 Paste Posts Manually
               </Button>
-              
+
               <div className="flex gap-2">
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   onClick={() => setCurrentStep("link-linkedin")}
                   className="flex-1"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back
                 </Button>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   onClick={handleSkipOnboarding}
                   className="flex-1 text-muted-foreground"
                 >
@@ -265,12 +269,12 @@ Leadership isn't about having all the answers. It's about asking the right quest
                 value={pastedPosts}
                 onChange={(e) => setPastedPosts(e.target.value)}
               />
-              
+
               <p className="text-xs text-muted-foreground text-center">
                 Separate each post with a blank line. Include at least 3 posts for best results.
               </p>
-              
-              <Button 
+
+              <Button
                 onClick={handleAnalyzePosts}
                 className="w-full"
                 disabled={pastedPosts.trim().length < 100}
@@ -279,18 +283,18 @@ Leadership isn't about having all the answers. It's about asking the right quest
                 <Sparkles className="w-4 h-4 mr-2" />
                 Analyze My Voice
               </Button>
-              
+
               <div className="flex gap-2">
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   onClick={() => setCurrentStep("data-export")}
                   className="flex-1"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back
                 </Button>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   onClick={handleSkipOnboarding}
                   className="flex-1 text-muted-foreground"
                 >

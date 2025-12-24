@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { collection, query, where, orderBy, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "@/firebaseConfig";
 import { useAuth } from "./useAuth";
 import { useUserTopics } from "./useUserTopics";
 import { toast } from "sonner";
@@ -14,6 +16,7 @@ export interface RecommendedPost {
   source_url: string | null;
   source_title: string | null;
   is_used: boolean;
+  used_at?: string;
   generated_at: string;
   expires_at: string;
   created_at: string;
@@ -27,44 +30,112 @@ export function useRecommendedPosts() {
   const activeTopics = topics.filter(t => t.is_active).map(t => t.name);
 
   const recommendedPostsQuery = useQuery({
-    queryKey: ["recommended-posts", user?.id],
+    queryKey: ["recommended-posts", user?.uid],
     queryFn: async () => {
-      if (!user?.id) return [];
-      
-      const { data, error } = await supabase
-        .from("recommended_posts")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("is_used", false)
-        .gt("expires_at", new Date().toISOString())
-        .order("generated_at", { ascending: false });
-      
-      if (error) throw error;
-      return data as RecommendedPost[];
+      if (!user?.uid) return [];
+
+      console.log("useRecommendedPosts: Fetching for user", user.uid);
+      try {
+        const q = query(
+          collection(db, "recommended_posts"),
+          where("user_id", "==", user.uid),
+          where("is_used", "==", false),
+          where("expires_at", ">", new Date().toISOString()),
+          orderBy("expires_at"), // Firestore restriction: first orderBy must be same as inequality filter
+          orderBy("generated_at", "desc")
+        );
+
+        const snapshot = await getDocs(q);
+        console.log(`useRecommendedPosts: Found ${snapshot.size} docs`);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as RecommendedPost[];
+      } catch (error) {
+        console.error("useRecommendedPosts: Query failed", error);
+        throw error;
+      }
     },
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!user?.uid,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const usageQuery = useQuery({
+    queryKey: ["recommendation-usage", user?.uid],
+    queryFn: async () => {
+      if (!user?.uid) return { count: 0, isLimited: false };
+
+      // Get start of current week (Sunday)
+      const now = new Date();
+      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      // Check subscription
+      const userDoc = await getDocs(query(collection(db, "users"), where("__name__", "==", user.uid)));
+      const userData = userDoc.docs[0]?.data();
+      // Optimization: Could cache user profile or use AuthContext if it had custom claims
+      const isPro = userData?.subscription_tier === 'pro';
+
+      if (isPro) return { count: 0, isLimited: false };
+
+      // Query used posts this week
+      const q = query(
+        collection(db, "recommended_posts"),
+        where("user_id", "==", user.uid),
+        where("is_used", "==", true),
+        where("used_at", ">=", startOfWeek.toISOString())
+      );
+
+      const snapshot = await getDocs(q);
+      return {
+        count: snapshot.size,
+        isLimited: snapshot.size >= 1
+      };
+    },
+    enabled: !!user?.uid,
   });
 
   const generateRecommendations = useMutation({
     mutationFn: async (forceRefresh: boolean = false) => {
-      if (!user?.id || activeTopics.length === 0) {
+      console.log("generateRecommendations: Starting...", { userId: user?.uid, topics: activeTopics, forceRefresh });
+
+      if (!user?.uid) {
+        console.error("generateRecommendations: No User ID");
+        throw new Error("No user logged in");
+      }
+      if (activeTopics.length === 0) {
+        console.error("generateRecommendations: No active topics");
         throw new Error("No topics configured");
       }
 
-      const { data, error } = await supabase.functions.invoke("generate-recommendations", {
-        body: { 
-          userId: user.id, 
-          topics: activeTopics,
-          forceRefresh,
-        },
-      });
+      console.log("generateRecommendations: Calling Cloud Function via fetch...");
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch("https://us-central1-authrax-beta-lv1.cloudfunctions.net/generateRecommendations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            userId: user.uid,
+            topics: activeTopics,
+            forceRefresh,
+          })
+        });
 
-      if (error) throw error;
-      return data;
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("generateRecommendations: Success", data);
+        return data as any;
+      } catch (err) {
+        console.error("generateRecommendations: Function call failed", err);
+        throw err;
+      }
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["recommended-posts", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["recommended-posts", user?.uid] });
       if (data.cached) {
         toast.success("Loaded saved recommendations");
       } else {
@@ -78,29 +149,24 @@ export function useRecommendedPosts() {
 
   const markAsUsed = useMutation({
     mutationFn: async (postId: string) => {
-      const { error } = await supabase
-        .from("recommended_posts")
-        .update({ is_used: true })
-        .eq("id", postId);
-      
-      if (error) throw error;
+      const docRef = doc(db, "recommended_posts", postId);
+      await updateDoc(docRef, {
+        is_used: true,
+        used_at: new Date().toISOString()
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["recommended-posts", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["recommended-posts", user?.uid] });
     },
   });
 
   const deleteRecommendation = useMutation({
     mutationFn: async (postId: string) => {
-      const { error } = await supabase
-        .from("recommended_posts")
-        .delete()
-        .eq("id", postId);
-      
-      if (error) throw error;
+      const docRef = doc(db, "recommended_posts", postId);
+      await deleteDoc(docRef);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["recommended-posts", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["recommended-posts", user?.uid] });
       toast.success("Recommendation removed");
     },
     onError: (error) => {
@@ -115,5 +181,7 @@ export function useRecommendedPosts() {
     markAsUsed,
     deleteRecommendation,
     hasTopics: activeTopics.length > 0,
+    usage: usageQuery.data || { count: 0, isLimited: false },
+    checkUsage: usageQuery.refetch,
   };
 }

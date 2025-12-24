@@ -1,26 +1,31 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings as SettingsIcon, Bell, Shield, Palette, Globe, HelpCircle } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Shield, Palette, HelpCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        navigate("/auth");
-      }
-    });
-  }, [navigate]);
+    if (!user) {
+      // navigate("/auth"); // useAuth should handle this or AppLayout
+    }
+  }, [user, navigate]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
+    try {
+      await signOut();
+      toast.success("Logged out successfully");
+      navigate("/auth/login");
+    } catch (error: any) {
+      toast.error(error.message);
+    }
   };
 
   const settingsSections = [

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { collection, query, where, orderBy, getDocs, doc, getDoc } from "firebase/firestore";
+import { db } from "@/firebaseConfig";
 
 export interface Template {
   id: string;
@@ -16,6 +17,7 @@ export interface Template {
   isTrending?: boolean | null;
   isCustom?: boolean | null;
   isSystem?: boolean | null;
+  usageCount?: number;
 }
 
 interface UseTemplatesOptions {
@@ -27,49 +29,50 @@ export function useTemplates(options: UseTemplatesOptions = {}) {
   return useQuery({
     queryKey: ["templates", options],
     queryFn: async () => {
-      let query = supabase
-        .from("templates")
-        .select("*")
-        .order("name");
+      const constraints = [];
 
       if (options.userType) {
-        query = query.eq("user_type", options.userType);
+        constraints.push(where("user_type", "==", options.userType));
       }
 
       if (options.trending) {
-        query = query.eq("is_trending", true);
+        // Use usage_count for trending, descending
+        constraints.push(orderBy("usage_count", "desc"));
+      } else {
+        constraints.push(orderBy("name"));
       }
 
-      const { data, error } = await query;
-
-      if (error) {
-        throw error;
-      }
+      const q = query(collection(db, "templates"), ...constraints);
+      const snapshot = await getDocs(q);
 
       // Map database fields to component-friendly format
-      return (data || []).map((t) => ({
-        id: t.id,
-        name: t.name,
-        category: t.category,
-        userType: t.user_type as "founder" | "executive" | "professional",
-        themes: t.themes || [],
-        formats: t.formats || [],
-        objectives: t.objectives || [],
-        description: t.description,
-        structure: t.structure,
-        prompt: t.prompt,
-        example: t.example,
-        isTrending: t.is_trending,
-        isCustom: t.is_custom,
-        isSystem: t.is_system,
-      })) as Template[];
+      return snapshot.docs.map((doc) => {
+        const t = doc.data();
+        return {
+          id: doc.id,
+          name: t.name,
+          category: t.category,
+          userType: t.user_type as "founder" | "executive" | "professional",
+          themes: t.themes || [],
+          formats: t.formats || [],
+          objectives: t.objectives || [],
+          description: t.description,
+          structure: t.structure,
+          prompt: t.prompt,
+          example: t.example,
+          isTrending: t.is_trending,
+          isCustom: t.is_custom,
+          isSystem: t.is_system,
+          usageCount: t.usage_count || 0,
+        };
+      }) as Template[];
     },
   });
 }
 
 export function useTrendingTemplates(limit = 6) {
   const { data: templates, ...rest } = useTemplates({ trending: true });
-  
+
   return {
     ...rest,
     data: templates?.slice(0, limit) || [],
@@ -82,20 +85,15 @@ export function useTemplate(id: string | undefined) {
     queryFn: async () => {
       if (!id) return null;
 
-      const { data, error } = await supabase
-        .from("templates")
-        .select("*")
-        .eq("id", id)
-        .single();
+      const docRef = doc(db, "templates", id);
+      const docSnap = await getDoc(docRef);
 
-      if (error) {
-        throw error;
-      }
+      if (!docSnap.exists()) return null;
 
-      if (!data) return null;
+      const data = docSnap.data();
 
       return {
-        id: data.id,
+        id: docSnap.id,
         name: data.name,
         category: data.category,
         userType: data.user_type as "founder" | "executive" | "professional",
@@ -109,6 +107,7 @@ export function useTemplate(id: string | undefined) {
         isTrending: data.is_trending,
         isCustom: data.is_custom,
         isSystem: data.is_system,
+        usageCount: data.usage_count || 0,
       } as Template;
     },
     enabled: !!id,

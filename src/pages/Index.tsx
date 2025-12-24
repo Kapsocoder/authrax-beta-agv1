@@ -2,18 +2,17 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, ArrowRight, Check, Linkedin, Shield, Smartphone, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Index() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/dashboard");
-      }
-    });
-  }, [navigate]);
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   const features = [
     {
@@ -74,7 +73,7 @@ export default function Index() {
             </h1>
 
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Create LinkedIn content that sounds like you. No robotic AI, no account risks. 
+              Create LinkedIn content that sounds like you. No robotic AI, no account risks.
               Mobile-first, works offline, and 100% LinkedIn compliant.
             </p>
 

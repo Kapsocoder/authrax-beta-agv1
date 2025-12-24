@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useNavigationGuard } from "@/contexts/NavigationGuardContext";
+import { SubscriptionBadge } from "@/hooks/useProfile";
 
 const navItems = [
   { icon: Home, label: "Dashboard", path: "/dashboard" },
@@ -39,7 +40,10 @@ export function Sidebar({ onLogout }: SidebarProps) {
           <Sparkles className="w-5 h-5 text-primary-foreground" />
         </div>
         <div>
-          <h1 className="font-bold text-lg text-foreground">Authrax</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-bold text-lg text-foreground">Authrax</h1>
+            <SubscriptionBadge />
+          </div>
           <p className="text-xs text-muted-foreground">LinkedIn Branding</p>
         </div>
       </div>
@@ -48,15 +52,15 @@ export function Sidebar({ onLogout }: SidebarProps) {
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
-          
+
           return (
             <button
               key={item.path}
               onClick={() => handleNavigation(item.path)}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left",
-                isActive 
-                  ? "bg-primary/10 text-primary font-medium" 
+                isActive
+                  ? "bg-primary/10 text-primary font-medium"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
@@ -68,8 +72,8 @@ export function Sidebar({ onLogout }: SidebarProps) {
       </nav>
 
       <div className="pt-4 border-t border-border">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
           onClick={onLogout}
         >

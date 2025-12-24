@@ -1,11 +1,11 @@
 import { Template } from "@/hooks/useTemplates";
-import { 
-  themeColors, 
-  formatColors, 
-  objectiveColors, 
-  themeLabels, 
-  formatLabels, 
-  objectiveLabels 
+import {
+  themeColors,
+  formatColors,
+  objectiveColors,
+  themeLabels,
+  formatLabels,
+  objectiveLabels
 } from "@/data/templateConstants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,9 +27,9 @@ const userTypeIcons = {
 };
 
 const userTypeColors = {
-  founder: "bg-primary/10 text-primary",
-  executive: "bg-accent/10 text-accent-foreground",
-  professional: "bg-secondary text-secondary-foreground",
+  founder: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
+  executive: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
+  professional: "bg-purple-500/10 text-purple-400 border border-purple-500/20",
 };
 
 export function TemplateCard({ template, onClick, selected, compact, showBadges = true }: TemplateCardProps) {
@@ -41,9 +41,9 @@ export function TemplateCard({ template, onClick, selected, compact, showBadges 
         onClick={onClick}
         className={cn(
           "w-full text-left p-3 rounded-xl border transition-all hover:shadow-md",
-          selected 
-            ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
-            : "border-border bg-card hover:border-primary/50"
+          selected
+            ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+            : "border-border bg-card/50 hover:border-primary/50 hover:bg-card"
         )}
       >
         <div className="flex items-start gap-3">
@@ -60,58 +60,60 @@ export function TemplateCard({ template, onClick, selected, compact, showBadges 
   }
 
   return (
-    <Card 
+    <Card
       className={cn(
-        "cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02]",
+        "cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02] bg-[#0A0A0B] border-white/5",
         selected && "ring-2 ring-primary border-primary"
       )}
       onClick={onClick}
     >
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3 mb-3">
-          <div className={cn("p-2 rounded-lg", userTypeColors[template.userType])}>
-            <Icon className="w-5 h-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-foreground truncate flex-1">{template.name}</h3>
-              {template.isTrending && (
-                <TrendingUp className="w-4 h-4 text-primary shrink-0" />
-              )}
+      <CardContent className="p-5">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-start gap-3">
+            <div className={cn("p-2.5 rounded-xl", userTypeColors[template.userType])}>
+              <Icon className="w-5 h-5" />
             </div>
-            <p className="text-sm text-muted-foreground capitalize">{template.userType}</p>
+            <div>
+              <h3 className="font-semibold text-foreground line-clamp-1">{template.name}</h3>
+              <p className="text-xs text-muted-foreground capitalize mt-0.5">{template.userType}</p>
+            </div>
           </div>
+          {template.isTrending && (
+            <TrendingUp className="w-4 h-4 text-emerald-400 shrink-0" />
+          )}
         </div>
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+
+        <p className="text-sm text-muted-foreground line-clamp-2 mb-4 h-10">
           {template.description}
         </p>
+
         {showBadges && (
-          <div className="flex flex-wrap gap-1">
-            {template.themes.slice(0, 2).map((theme) => (
-              <Badge 
+          <div className="flex flex-wrap gap-2">
+            {template.themes.slice(0, 1).map((theme) => (
+              <Badge
                 key={theme}
-                variant="outline" 
-                className={cn("text-xs border", themeColors[theme] || "bg-muted/50 text-muted-foreground")}
+                variant="outline"
+                className={cn("text-[10px] px-2 py-0.5 h-6 rounded-full border", themeColors[theme] || "bg-muted/50 text-muted-foreground")}
               >
                 {themeLabels[theme] || theme}
               </Badge>
             ))}
-            {template.formats.slice(0, 1).map((format) => (
-              <Badge 
-                key={format}
-                variant="outline" 
-                className={cn("text-xs border", formatColors[format] || "bg-muted/50 text-muted-foreground")}
-              >
-                {formatLabels[format] || format}
-              </Badge>
-            ))}
             {template.objectives.slice(0, 1).map((objective) => (
-              <Badge 
+              <Badge
                 key={objective}
-                variant="outline" 
-                className={cn("text-xs border", objectiveColors[objective] || "bg-muted/50 text-muted-foreground")}
+                variant="outline"
+                className={cn("text-[10px] px-2 py-0.5 h-6 rounded-full border", objectiveColors[objective] || "bg-muted/50 text-muted-foreground")}
               >
                 {objectiveLabels[objective] || objective}
+              </Badge>
+            ))}
+            {template.formats.slice(0, 1).map((format) => (
+              <Badge
+                key={format}
+                variant="outline"
+                className={cn("text-[10px] px-2 py-0.5 h-6 rounded-full border", formatColors[format] || "bg-muted/50 text-muted-foreground")}
+              >
+                {formatLabels[format] || format}
               </Badge>
             ))}
           </div>

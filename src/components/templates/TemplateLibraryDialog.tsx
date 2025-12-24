@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from "react";
 import { useTemplates, Template } from "@/hooks/useTemplates";
-import { 
+import {
   userTypeLabels,
   themeLabels,
   formatLabels,
@@ -27,7 +27,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Search, Plus, X, Users, Palette, Target, FileType, ChevronLeft, ChevronRight, ArrowLeft, CheckCircle2, LayoutTemplate, Sparkles } from "lucide-react";
+
+import { Search, Plus, X, Users, Palette, Target, FileType, ChevronLeft, ChevronRight, ArrowLeft, CheckCircle2, LayoutTemplate, Sparkles, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TemplateLibraryDialogProps {
@@ -36,9 +37,7 @@ interface TemplateLibraryDialogProps {
   onSelectTemplate: (template: Template) => void;
 }
 
-interface ScrollableFilterRowProps {
-  label: string;
-  icon: React.ReactNode;
+interface FilterOptionsProps {
   options: readonly string[];
   labels: Record<string, string>;
   colors: Record<string, string>;
@@ -46,20 +45,18 @@ interface ScrollableFilterRowProps {
   onToggle: (value: string) => void;
 }
 
-function ScrollableFilterRow({ 
-  label, 
-  icon, 
-  options, 
-  labels, 
-  colors, 
-  selected, 
-  onToggle 
-}: ScrollableFilterRowProps) {
+function FilterOptionsList({
+  options,
+  labels,
+  colors,
+  selected,
+  onToggle
+}: FilterOptionsProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  
+
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
-      const scrollAmount = 200;
+      const scrollAmount = 300;
       scrollRef.current.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth'
@@ -68,62 +65,57 @@ function ScrollableFilterRow({
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        {icon}
-        <span className="text-sm font-medium text-foreground">{label}</span>
+    <div className="relative flex items-center gap-1 group flex-1 min-w-0">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground hidden md:flex"
+        onClick={() => scroll('left')}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <div
+        ref={scrollRef}
+        className="flex gap-2 overflow-x-auto scrollbar-hide scroll-smooth py-1 px-1 w-full"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {options.map(option => (
+          <Badge
+            key={option}
+            variant="outline"
+            className={cn(
+              "whitespace-nowrap cursor-pointer transition-all border shrink-0 px-3 py-1.5 text-sm font-normal",
+              selected.includes(option)
+                ? colors[option]
+                : "bg-muted/30 text-muted-foreground border-border hover:bg-muted/50 hover:text-foreground"
+            )}
+            onClick={() => onToggle(option)}
+          >
+            {labels[option] || option}
+            {selected.includes(option) && <CheckCircle2 className="ml-2 w-3 h-3" />}
+          </Badge>
+        ))}
       </div>
-      <div className="relative flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
-          onClick={() => scroll('left')}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <div 
-          ref={scrollRef}
-          className="flex gap-2 overflow-x-auto scrollbar-hide scroll-smooth"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          {options.map(option => (
-            <Badge
-              key={option}
-              variant="outline"
-              className={cn(
-                "whitespace-nowrap cursor-pointer transition-all border shrink-0 px-3 py-1",
-                selected.includes(option) 
-                  ? colors[option] 
-                  : "bg-muted/30 text-muted-foreground border-border hover:bg-muted/50"
-              )}
-              onClick={() => onToggle(option)}
-            >
-              {labels[option] || option}
-            </Badge>
-          ))}
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
-          onClick={() => scroll('right')}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground hidden md:flex"
+        onClick={() => scroll('right')}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
     </div>
   );
 }
 
 // Template Preview Component
-function TemplatePreview({ 
-  template, 
-  onSelect, 
-  onBack 
-}: { 
-  template: Template; 
-  onSelect: () => void; 
+function TemplatePreview({
+  template,
+  onSelect,
+  onBack
+}: {
+  template: Template;
+  onSelect: () => void;
   onBack: () => void;
 }) {
   return (
@@ -194,9 +186,9 @@ function TemplatePreview({
               </h4>
               <div className="flex flex-wrap gap-1.5">
                 {template.themes.map((theme) => (
-                  <Badge 
-                    key={theme} 
-                    variant="outline" 
+                  <Badge
+                    key={theme}
+                    variant="outline"
                     className={cn("text-xs", themeFilterColors[theme])}
                   >
                     {themeLabels[theme] || theme}
@@ -213,9 +205,9 @@ function TemplatePreview({
               </h4>
               <div className="flex flex-wrap gap-1.5">
                 {template.formats.map((format) => (
-                  <Badge 
-                    key={format} 
-                    variant="outline" 
+                  <Badge
+                    key={format}
+                    variant="outline"
                     className={cn("text-xs", formatFilterColors[format])}
                   >
                     {formatLabels[format] || format}
@@ -232,9 +224,9 @@ function TemplatePreview({
               </h4>
               <div className="flex flex-wrap gap-1.5">
                 {template.objectives.map((objective) => (
-                  <Badge 
-                    key={objective} 
-                    variant="outline" 
+                  <Badge
+                    key={objective}
+                    variant="outline"
                     className={cn("text-xs", objectiveFilterColors[objective])}
                   >
                     {objectiveLabels[objective] || objective}
@@ -250,8 +242,8 @@ function TemplatePreview({
               <Users className="w-3 h-3" />
               Recommended For
             </h4>
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className={cn("text-sm", userTypeFilterColors[template.userType])}
             >
               {userTypeLabels[template.userType]}
@@ -287,34 +279,36 @@ export function TemplateLibraryDialog({
   const [selectedObjectives, setSelectedObjectives] = useState<string[]>([]);
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
 
+  const [activeCategory, setActiveCategory] = useState<'userType' | 'theme' | 'format' | 'objective'>('userType');
+
   const { data: templates = [], isLoading } = useTemplates();
 
   const hasActiveFilters = selectedUserTypes.length > 0 || selectedThemes.length > 0 || selectedFormats.length > 0 || selectedObjectives.length > 0;
 
   const filteredTemplates = useMemo(() => {
     return templates.filter((template) => {
-      const matchesSearch = 
+      const matchesSearch =
         template.name.toLowerCase().includes(search.toLowerCase()) ||
         template.description.toLowerCase().includes(search.toLowerCase()) ||
         template.category.toLowerCase().includes(search.toLowerCase()) ||
         template.themes.some(t => t.toLowerCase().includes(search.toLowerCase())) ||
         template.formats.some(f => f.toLowerCase().includes(search.toLowerCase())) ||
         template.objectives.some(o => o.toLowerCase().includes(search.toLowerCase()));
-      
-      const matchesUserType = 
-        selectedUserTypes.length === 0 || 
+
+      const matchesUserType =
+        selectedUserTypes.length === 0 ||
         selectedUserTypes.includes(template.userType);
 
-      const matchesTheme = 
-        selectedThemes.length === 0 || 
+      const matchesTheme =
+        selectedThemes.length === 0 ||
         template.themes.some(t => selectedThemes.includes(t));
 
-      const matchesFormat = 
-        selectedFormats.length === 0 || 
+      const matchesFormat =
+        selectedFormats.length === 0 ||
         template.formats.some(f => selectedFormats.includes(f));
 
-      const matchesObjective = 
-        selectedObjectives.length === 0 || 
+      const matchesObjective =
+        selectedObjectives.length === 0 ||
         template.objectives.some(o => selectedObjectives.includes(o));
 
       return matchesSearch && matchesUserType && matchesTheme && matchesFormat && matchesObjective;
@@ -322,8 +316,8 @@ export function TemplateLibraryDialog({
   }, [templates, search, selectedUserTypes, selectedThemes, selectedFormats, selectedObjectives]);
 
   const toggleFilter = (
-    value: string, 
-    selected: string[], 
+    value: string,
+    selected: string[],
     setSelected: React.Dispatch<React.SetStateAction<string[]>>
   ) => {
     if (selected.includes(value)) {
@@ -362,8 +356,8 @@ export function TemplateLibraryDialog({
     <Dialog open={open} onOpenChange={handleCloseDialog}>
       <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 bg-background border-border">
         {previewTemplate ? (
-          <TemplatePreview 
-            template={previewTemplate} 
+          <TemplatePreview
+            template={previewTemplate}
             onSelect={handleSelectTemplate}
             onBack={() => setPreviewTemplate(null)}
           />
@@ -381,56 +375,143 @@ export function TemplateLibraryDialog({
                     className="pl-10 bg-muted/30 border-border"
                   />
                 </div>
-                {hasActiveFilters && (
-                  <Button variant="outline" size="sm" onClick={clearAllFilters} className="text-xs">
-                    <X className="w-3 h-3 mr-1" />
-                    Clear filters
-                  </Button>
-                )}
+                {/* Clear filters moved to the filter row */}
               </div>
             </DialogHeader>
 
-            {/* Filters Section - Always visible */}
-            <div className="px-6 py-4 border-b border-border bg-muted/10 space-y-4">
-              <ScrollableFilterRow
-                label="User Types"
-                icon={<Users className="w-4 h-4 text-muted-foreground" />}
-                options={userTypeFilters}
-                labels={userTypeLabels}
-                colors={userTypeFilterColors}
-                selected={selectedUserTypes}
-                onToggle={(value) => toggleFilter(value, selectedUserTypes, setSelectedUserTypes)}
-              />
-              
-              <ScrollableFilterRow
-                label="Themes"
-                icon={<Palette className="w-4 h-4 text-muted-foreground" />}
-                options={themeFilters}
-                labels={themeLabels}
-                colors={themeFilterColors}
-                selected={selectedThemes}
-                onToggle={(value) => toggleFilter(value, selectedThemes, setSelectedThemes)}
-              />
-              
-              <ScrollableFilterRow
-                label="Formats"
-                icon={<FileType className="w-4 h-4 text-muted-foreground" />}
-                options={formatFilters}
-                labels={formatLabels}
-                colors={formatFilterColors}
-                selected={selectedFormats}
-                onToggle={(value) => toggleFilter(value, selectedFormats, setSelectedFormats)}
-              />
-              
-              <ScrollableFilterRow
-                label="Objectives"
-                icon={<Target className="w-4 h-4 text-muted-foreground" />}
-                options={objectiveFilters}
-                labels={objectiveLabels}
-                colors={objectiveFilterColors}
-                selected={selectedObjectives}
-                onToggle={(value) => toggleFilter(value, selectedObjectives, setSelectedObjectives)}
-              />
+            {/* Filters Section - Tabbed Interface */}
+            <div className="flex flex-col border-b border-border bg-muted/10">
+              {/* Row 1: Category Tabs */}
+              <div className="flex items-center gap-1 px-6 pt-3 pb-0 border-b border-border/50 overflow-x-auto scrollbar-hide">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveCategory('userType')}
+                  className={cn(
+                    "rounded-b-none border-b-2 border-transparent hover:bg-transparent hover:text-primary px-4 pb-3 pt-2 h-auto text-muted-foreground",
+                    activeCategory === 'userType' && "border-primary text-primary font-medium bg-background/50"
+                  )}
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  User Types
+                  {selectedUserTypes.length > 0 && (
+                    <Badge variant="secondary" className="ml-2 h-5 min-w-5 px-1 rounded-full text-[10px] flex items-center justify-center bg-primary/10 text-primary">
+                      {selectedUserTypes.length}
+                    </Badge>
+                  )}
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveCategory('theme')}
+                  className={cn(
+                    "rounded-b-none border-b-2 border-transparent hover:bg-transparent hover:text-primary px-4 pb-3 pt-2 h-auto text-muted-foreground",
+                    activeCategory === 'theme' && "border-primary text-primary font-medium bg-background/50"
+                  )}
+                >
+                  <Palette className="w-4 h-4 mr-2" />
+                  Themes
+                  {selectedThemes.length > 0 && (
+                    <Badge variant="secondary" className="ml-2 h-5 min-w-5 px-1 rounded-full text-[10px] flex items-center justify-center bg-primary/10 text-primary">
+                      {selectedThemes.length}
+                    </Badge>
+                  )}
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveCategory('format')}
+                  className={cn(
+                    "rounded-b-none border-b-2 border-transparent hover:bg-transparent hover:text-primary px-4 pb-3 pt-2 h-auto text-muted-foreground",
+                    activeCategory === 'format' && "border-primary text-primary font-medium bg-background/50"
+                  )}
+                >
+                  <FileType className="w-4 h-4 mr-2" />
+                  Formats
+                  {selectedFormats.length > 0 && (
+                    <Badge variant="secondary" className="ml-2 h-5 min-w-5 px-1 rounded-full text-[10px] flex items-center justify-center bg-primary/10 text-primary">
+                      {selectedFormats.length}
+                    </Badge>
+                  )}
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveCategory('objective')}
+                  className={cn(
+                    "rounded-b-none border-b-2 border-transparent hover:bg-transparent hover:text-primary px-4 pb-3 pt-2 h-auto text-muted-foreground",
+                    activeCategory === 'objective' && "border-primary text-primary font-medium bg-background/50"
+                  )}
+                >
+                  <Target className="w-4 h-4 mr-2" />
+                  Objectives
+                  {selectedObjectives.length > 0 && (
+                    <Badge variant="secondary" className="ml-2 h-5 min-w-5 px-1 rounded-full text-[10px] flex items-center justify-center bg-primary/10 text-primary">
+                      {selectedObjectives.length}
+                    </Badge>
+                  )}
+                </Button>
+
+                <div className="flex-1" />
+
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllFilters}
+                    className="mb-2 h-8 px-2 text-muted-foreground hover:text-destructive text-xs"
+                  >
+                    Reset All
+                    <X className="ml-1.5 h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Row 2: Options for Active Category */}
+              <div className="px-6 py-3 bg-muted/20 min-h-[60px] flex items-center">
+                {activeCategory === 'userType' && (
+                  <FilterOptionsList
+                    options={userTypeFilters}
+                    labels={userTypeLabels}
+                    colors={userTypeFilterColors}
+                    selected={selectedUserTypes}
+                    onToggle={(value) => toggleFilter(value, selectedUserTypes, setSelectedUserTypes)}
+                  />
+                )}
+
+                {activeCategory === 'theme' && (
+                  <FilterOptionsList
+                    options={themeFilters}
+                    labels={themeLabels}
+                    colors={themeFilterColors}
+                    selected={selectedThemes}
+                    onToggle={(value) => toggleFilter(value, selectedThemes, setSelectedThemes)}
+                  />
+                )}
+
+                {activeCategory === 'format' && (
+                  <FilterOptionsList
+                    options={formatFilters}
+                    labels={formatLabels}
+                    colors={formatFilterColors}
+                    selected={selectedFormats}
+                    onToggle={(value) => toggleFilter(value, selectedFormats, setSelectedFormats)}
+                  />
+                )}
+
+                {activeCategory === 'objective' && (
+                  <FilterOptionsList
+                    options={objectiveFilters}
+                    labels={objectiveLabels}
+                    colors={objectiveFilterColors}
+                    selected={selectedObjectives}
+                    onToggle={(value) => toggleFilter(value, selectedObjectives, setSelectedObjectives)}
+                  />
+                )}
+              </div>
             </div>
 
             <ScrollArea className="flex-1 px-6 py-4">

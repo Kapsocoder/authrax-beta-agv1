@@ -15,8 +15,8 @@ interface TrendingTemplatesProps {
   showPreviewFirst?: boolean;
 }
 
-export function TrendingTemplates({ 
-  onSelectTemplate, 
+export function TrendingTemplates({
+  onSelectTemplate,
   showViewAll = true,
   maxItems = 6,
   showPreviewFirst = false
@@ -29,10 +29,10 @@ export function TrendingTemplates({
     if (onSelectTemplate) {
       onSelectTemplate(template);
     } else {
-      navigate("/create", { 
-        state: { 
+      navigate("/create", {
+        state: {
           mode: "template",
-          templateId: template.id 
+          templateId: template.id
         }
       });
     }
@@ -43,10 +43,10 @@ export function TrendingTemplates({
     if (onSelectTemplate) {
       onSelectTemplate(template);
     } else {
-      navigate("/create", { 
-        state: { 
+      navigate("/create", {
+        state: {
           mode: "template",
-          templateId: template.id 
+          templateId: template.id
         }
       });
     }
@@ -54,18 +54,18 @@ export function TrendingTemplates({
 
   return (
     <>
-      <Card className="bg-card border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center justify-between">
+      <Card className="bg-transparent border-none shadow-none p-0">
+        <CardHeader className="px-1 pb-4 pt-0">
+          <CardTitle className="text-lg flex items-center justify-between font-normal">
             <span className="flex items-center gap-2">
-              <LayoutTemplate className="w-5 h-5 text-primary" />
+              <LayoutTemplate className="w-5 h-5 text-emerald-400" />
               Trending Templates
             </span>
             {showViewAll && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-primary"
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
                 onClick={() => setShowLibrary(true)}
               >
                 View All
@@ -74,15 +74,15 @@ export function TrendingTemplates({
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0">
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.from({ length: maxItems }).map((_, i) => (
-                <Skeleton key={i} className="h-32 rounded-lg" />
+                <Skeleton key={i} className="h-40 rounded-xl bg-white/5" />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {trendingTemplates.map((template) => (
                 <TemplateCard
                   key={template.id}
@@ -95,8 +95,8 @@ export function TrendingTemplates({
         </CardContent>
       </Card>
 
-      <TemplateLibraryDialog 
-        open={showLibrary} 
+      <TemplateLibraryDialog
+        open={showLibrary}
         onOpenChange={setShowLibrary}
         onSelectTemplate={handleLibrarySelect}
       />

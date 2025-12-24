@@ -7,19 +7,29 @@ import { RecommendedPostCard } from "@/components/recommendations/RecommendedPos
 import { useAuth } from "@/hooks/useAuth";
 import { useRecommendedPosts, RecommendedPost } from "@/hooks/useRecommendedPosts";
 import { useUserTopics } from "@/hooks/useUserTopics";
+import { useProfile } from "@/hooks/useProfile";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+
+import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
+import { useState } from "react";
 
 export default function Recommendations() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { topics } = useUserTopics();
-  const { 
-    recommendations, 
-    isLoading, 
-    generateRecommendations, 
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const {
+    recommendations,
+    isLoading,
+    generateRecommendations,
     markAsUsed,
     deleteRecommendation,
-    hasTopics 
+    hasTopics,
+    usage
   } = useRecommendedPosts();
+
+  const { isPro } = useProfile();
 
   const activeTopics = topics.filter(t => t.is_active);
 
@@ -83,27 +93,38 @@ export default function Recommendations() {
 
           {/* Topics Info */}
           {activeTopics.length > 0 && (
-            <Card className="border-primary/20">
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-sm text-muted-foreground">Your topics:</span>
-                    {activeTopics.map((topic) => (
-                      <span
-                        key={topic.id}
-                        className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium"
-                      >
-                        {topic.name}
-                      </span>
-                    ))}
+            <div className="space-y-4">
+              {!isPro && activeTopics.length > 3 && (
+                <Alert className="bg-yellow-500/10 border-yellow-500/50 text-yellow-600">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Topic Limit Reached</AlertTitle>
+                  <AlertDescription>
+                    Free plan includes 3 active topics. Only the first 3 will be used. <button onClick={() => setShowUpgradeModal(true)} className="underline font-medium">Upgrade to Pro</button> for up to 20 topics.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <Card className="border-primary/20">
+                <CardContent className="py-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-sm text-muted-foreground">Your topics:</span>
+                      {activeTopics.map((topic) => (
+                        <span
+                          key={topic.id}
+                          className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium"
+                        >
+                          {topic.name}
+                        </span>
+                      ))}
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => navigate("/settings")}>
+                      <Settings className="w-4 h-4 mr-1" />
+                      Manage Topics
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => navigate("/settings")}>
-                    <Settings className="w-4 h-4 mr-1" />
-                    Manage Topics
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {/* No Topics State */}
@@ -140,8 +161,8 @@ export default function Recommendations() {
                 <p className="text-muted-foreground mb-4">
                   Generate AI-powered post recommendations based on trending topics
                 </p>
-                <Button 
-                  variant="gradient" 
+                <Button
+                  variant="gradient"
                   onClick={handleGenerate}
                   disabled={generateRecommendations.isPending}
                 >
@@ -173,8 +194,15 @@ export default function Recommendations() {
                       <RecommendedPostCard
                         key={post.id}
                         post={post}
-                        onUse={handleUsePost}
+                        onUse={(p) => {
+                          if (usage.isLimited) {
+                            setShowUpgradeModal(true);
+                          } else {
+                            handleUsePost(p);
+                          }
+                        }}
                         onDelete={handleDelete}
+                        disabled={usage.isLimited}
                       />
                     ))}
                   </div>
@@ -184,6 +212,11 @@ export default function Recommendations() {
           )}
         </div>
       </div>
+      <SubscriptionModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+        currentUsage={usage.count}
+      />
     </AppLayout>
   );
 }

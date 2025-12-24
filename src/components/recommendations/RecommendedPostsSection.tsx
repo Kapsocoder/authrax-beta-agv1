@@ -4,15 +4,32 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRecommendedPosts, RecommendedPost } from "@/hooks/useRecommendedPosts";
 import { RecommendedPostCard } from "./RecommendedPostCard";
+import { useProfile } from "@/hooks/useProfile";
+import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
+import { useState } from "react";
 
 export function RecommendedPostsSection() {
   const navigate = useNavigate();
-  const { 
-    recommendations, 
-    isLoading, 
-    generateRecommendations, 
-    hasTopics 
+  const {
+    recommendations,
+    isLoading,
+    generateRecommendations,
+    hasTopics
   } = useRecommendedPosts();
+  const { checkUsageLimit, incrementUsage, usageCount } = useProfile();
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+
+  const handleGenerate = () => {
+    if (!checkUsageLimit()) {
+      setShowSubscriptionModal(true);
+      return;
+    }
+    generateRecommendations.mutate(false, {
+      onSuccess: () => {
+        incrementUsage.mutate();
+      }
+    });
+  };
 
   const displayedRecommendations = recommendations.slice(0, 3);
 
@@ -61,7 +78,7 @@ export function RecommendedPostsSection() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => generateRecommendations.mutate(false)}
+              onClick={handleGenerate}
               disabled={generateRecommendations.isPending}
             >
               {generateRecommendations.isPending ? (
@@ -86,10 +103,18 @@ export function RecommendedPostsSection() {
           <div className="text-center py-8 text-muted-foreground">
             <Lightbulb className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p className="mb-2">No recommendations yet</p>
-            <Button 
-              variant="gradient" 
-              size="sm" 
-              onClick={() => generateRecommendations.mutate(true)}
+            <Button
+              variant="gradient"
+              size="sm"
+              onClick={() => {
+                if (!checkUsageLimit()) {
+                  setShowSubscriptionModal(true);
+                  return;
+                }
+                generateRecommendations.mutate(true, {
+                  onSuccess: () => incrementUsage.mutate()
+                });
+              }}
               disabled={generateRecommendations.isPending}
             >
               {generateRecommendations.isPending ? (
@@ -115,6 +140,11 @@ export function RecommendedPostsSection() {
           </div>
         )}
       </CardContent>
+      <SubscriptionModal
+        open={showSubscriptionModal}
+        onOpenChange={setShowSubscriptionModal}
+        currentUsage={usageCount}
+      />
     </Card>
   );
 }

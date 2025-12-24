@@ -9,10 +9,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useVoiceProfile } from "@/hooks/useVoiceProfile";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { useProfile } from "@/hooks/useProfile";
+import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
 
 export default function Voice() {
   const { signOut } = useAuth();
   const { voiceProfile, isLoading, analyzeVoice, updateVoiceProfile } = useVoiceProfile();
+  const { checkFeatureAccess, usageCount } = useProfile();
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [linkedInUrl, setLinkedInUrl] = useState("");
   const [pastedPosts, setPastedPosts] = useState("");
   const [isEditingPrompt, setIsEditingPrompt] = useState(false);
@@ -32,6 +36,11 @@ export default function Voice() {
 
     if (posts.length < 2) {
       toast.error("Please provide at least 2 substantial posts (50+ characters each)");
+      return;
+    }
+
+    if (!checkFeatureAccess('voice_training')) {
+      setShowSubscriptionModal(true);
       return;
     }
 
@@ -57,25 +66,25 @@ export default function Voice() {
   const voiceScore = voiceProfile?.is_trained ? 75 + Math.min(25, (voiceProfile.sample_posts?.length || 0) * 5) : 0;
 
   const voiceTraits = [
-    { 
-      label: "Tone", 
-      value: voiceProfile?.tone || "Not analyzed", 
-      description: "Professional, Casual, etc." 
+    {
+      label: "Tone",
+      value: voiceProfile?.tone || "Not analyzed",
+      description: "Professional, Casual, etc."
     },
-    { 
-      label: "Sentence Length", 
-      value: voiceProfile?.sentence_length || "Not analyzed", 
-      description: "Short, Medium, Long" 
+    {
+      label: "Sentence Length",
+      value: voiceProfile?.sentence_length || "Not analyzed",
+      description: "Short, Medium, Long"
     },
-    { 
-      label: "Emoji Usage", 
-      value: voiceProfile?.emoji_usage || "Not analyzed", 
-      description: "Minimal, Moderate, Heavy" 
+    {
+      label: "Emoji Usage",
+      value: voiceProfile?.emoji_usage || "Not analyzed",
+      description: "Minimal, Moderate, Heavy"
     },
-    { 
-      label: "Writing Style", 
-      value: voiceProfile?.writing_style || "Not analyzed", 
-      description: "Story-driven, Data-backed, etc." 
+    {
+      label: "Writing Style",
+      value: voiceProfile?.writing_style || "Not analyzed",
+      description: "Story-driven, Data-backed, etc."
     },
   ];
 
@@ -109,9 +118,9 @@ export default function Voice() {
             </div>
             <Progress value={voiceScore} className="h-2" />
             <p className="text-xs text-muted-foreground mt-2">
-              {voiceScore < 50 
-                ? "Add more posts for better AI accuracy" 
-                : voiceScore < 90 
+              {voiceScore < 50
+                ? "Add more posts for better AI accuracy"
+                : voiceScore < 90
                   ? "Good foundation! Keep adding content for best results."
                   : "Excellent! Your AI voice is well-trained."}
             </p>
@@ -225,7 +234,7 @@ export default function Voice() {
                 </div>
               ))}
             </div>
-            
+
             {voiceProfile?.analysis_summary && (
               <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                 <h4 className="font-medium text-foreground mb-2">AI Summary</h4>
@@ -283,9 +292,9 @@ export default function Voice() {
                     <X className="w-4 h-4 mr-2" />
                     Cancel
                   </Button>
-                  <Button 
-                    variant="gradient" 
-                    size="sm" 
+                  <Button
+                    variant="gradient"
+                    size="sm"
                     onClick={handleSavePrompt}
                     disabled={updateVoiceProfile.isPending}
                   >
@@ -314,6 +323,11 @@ export default function Voice() {
           </CardContent>
         </Card>
       </div>
-    </AppLayout>
+      <SubscriptionModal
+        open={showSubscriptionModal}
+        onOpenChange={setShowSubscriptionModal}
+        currentUsage={usageCount}
+      />
+    </AppLayout >
   );
 }

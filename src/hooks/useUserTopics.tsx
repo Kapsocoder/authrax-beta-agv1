@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { collection, query, orderBy, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc } from "firebase/firestore";
+import { db } from "@/firebaseConfig";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
 
@@ -16,37 +17,52 @@ export function useUserTopics() {
   const queryClient = useQueryClient();
 
   const topicsQuery = useQuery({
-    queryKey: ["user-topics", user?.id],
+    queryKey: ["user-topics", user?.uid],
     queryFn: async () => {
-      if (!user?.id) return [];
-      
-      const { data, error } = await supabase
-        .from("user_topics")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-      
-      if (error) throw error;
-      return data as UserTopic[];
+      if (!user?.uid) return [];
+
+      const q = query(
+        collection(db, "users", user.uid, "topics"),
+        orderBy("created_at", "desc")
+      );
+
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as UserTopic[];
     },
-    enabled: !!user?.id,
+    enabled: !!user?.uid,
   });
 
   const addTopic = useMutation({
     mutationFn: async (name: string) => {
-      if (!user?.id) throw new Error("Not authenticated");
-      
-      const { data, error } = await supabase
-        .from("user_topics")
-        .insert({ user_id: user.id, name })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+      if (!user?.uid) throw new Error("Not authenticated");
+
+      // 1. Check Subscription Tier
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+      const userData = userDoc.data();
+      const isPro = userData?.subscription_tier === 'pro';
+      const limit = isPro ? 20 : 3;
+
+      // 2. Check Current Count
+      const topicsRef = collection(db, "users", user.uid, "topics");
+      const snapshot = await getDocs(topicsRef);
+
+      if (snapshot.size >= limit) {
+        throw new Error(`You have reached the limit of ${limit} topics for your plan.`);
+      }
+
+      const newTopic = {
+        user_id: user.uid,
+        name,
+        is_active: true,
+        created_at: new Date().toISOString()
+      };
+
+      const docRef = await addDoc(topicsRef, newTopic);
+      return { id: docRef.id, ...newTopic };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-topics", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["user-topics", user?.uid] });
       toast.success("Topic added!");
     },
     onError: (error) => {
@@ -56,15 +72,11 @@ export function useUserTopics() {
 
   const removeTopic = useMutation({
     mutationFn: async (topicId: string) => {
-      const { error } = await supabase
-        .from("user_topics")
-        .delete()
-        .eq("id", topicId);
-      
-      if (error) throw error;
+      if (!user?.uid) throw new Error("Not authenticated");
+      await deleteDoc(doc(db, "users", user.uid, "topics", topicId));
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-topics", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["user-topics", user?.uid] });
       toast.success("Topic removed");
     },
     onError: (error) => {
@@ -74,15 +86,13 @@ export function useUserTopics() {
 
   const toggleTopic = useMutation({
     mutationFn: async ({ topicId, isActive }: { topicId: string; isActive: boolean }) => {
-      const { error } = await supabase
-        .from("user_topics")
-        .update({ is_active: isActive })
-        .eq("id", topicId);
-      
-      if (error) throw error;
+      if (!user?.uid) throw new Error("Not authenticated");
+
+      const docRef = doc(db, "users", user.uid, "topics", topicId);
+      await updateDoc(docRef, { is_active: isActive });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-topics", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["user-topics", user?.uid] });
     },
   });
 

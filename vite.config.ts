@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "robots.txt"],
       manifest: {
-        name: "PostPilot - LinkedIn Content Studio",
-        short_name: "PostPilot",
+        name: "Authrax - LinkedIn Content Studio",
+        short_name: "Authrax",
         description: "Create engaging LinkedIn posts with AI-powered assistance",
         theme_color: "#6366f1",
         background_color: "#0f0f0f",

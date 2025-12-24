@@ -6,50 +6,87 @@ interface AutoSaveOptions {
   content: string;
   sourceUrl?: string;
   sourceType?: "voice" | "draft" | "url" | "video" | "pdf" | null;
+  templateId?: string | null;
+  inputContext?: string;
   enabled?: boolean;
   debounceMs?: number;
+  currentDraftId?: string | null;
+  onDraftCreated?: (id: string) => void;
 }
 
 export function useAutoSaveDraft({
   content,
   sourceUrl,
   sourceType,
+  templateId,
+  inputContext,
   enabled = true,
   debounceMs = 2000,
+  currentDraftId,
+  onDraftCreated,
 }: AutoSaveOptions) {
   const { user } = useAuth();
-  const { createPost } = usePosts();
-  const draftIdRef = useRef<string | null>(null);
+  const { createPost, updatePost } = usePosts();
+  const draftIdRef = useRef<string | null>(currentDraftId || null);
   const lastSavedContentRef = useRef<string>("");
+  const lastSavedSourceUrlRef = useRef<string | undefined>(undefined);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hasAutoSavedRef = useRef(false);
 
-  const saveDraft = useCallback(async (contentToSave: string) => {
-    if (!user?.id || !contentToSave.trim()) return;
-    
-    // Don't save if content hasn't changed
-    if (contentToSave === lastSavedContentRef.current) return;
-    
+  // Update ref when prop changes
+  useEffect(() => {
+    if (currentDraftId) {
+      draftIdRef.current = currentDraftId;
+    }
+  }, [currentDraftId]);
+
+  const saveDraft = useCallback(async (contentToSave: string, urlToSave?: string) => {
+    if (!user?.uid || !contentToSave.trim()) return;
+
+    // Don't save if content hasn't changed from last save
+    // TODO: We should also check if other fields changed, but for now focus on content trigger
+    if (contentToSave === lastSavedContentRef.current && urlToSave === lastSavedSourceUrlRef.current) return;
+
     try {
-      // Create a new draft if we haven't already
-      if (!hasAutoSavedRef.current) {
+      if (draftIdRef.current) {
+        // Update existing draft
+        await updatePost.mutateAsync({
+          id: draftIdRef.current,
+          content: contentToSave,
+          ...(urlToSave ? { source_url: urlToSave } : {}),
+          ...(templateId ? { template_id: templateId } : {}),
+          ...(inputContext ? { input_context: inputContext } : {}),
+          ...(sourceType ? { input_mode: sourceType } : {}),
+        });
+        lastSavedContentRef.current = contentToSave;
+        lastSavedSourceUrlRef.current = urlToSave;
+      } else {
+        // Create new draft
         const result = await createPost.mutateAsync({
           content: contentToSave,
           status: "draft",
           is_ai_generated: false,
-          ai_prompt: sourceUrl ? `Source: ${sourceUrl}` : sourceType || undefined,
+          ai_prompt: urlToSave ? `Source: ${urlToSave}` : sourceType || undefined, // Keep legacy field for compatibility
+          template_id: templateId || null,
+          input_mode: sourceType || null,
+          input_context: inputContext || null,
+          source_url: urlToSave || null,
         });
         draftIdRef.current = result.id;
-        hasAutoSavedRef.current = true;
         lastSavedContentRef.current = contentToSave;
+        lastSavedSourceUrlRef.current = urlToSave;
+
+        if (onDraftCreated) {
+          onDraftCreated(result.id);
+        }
       }
     } catch (error) {
       console.error("Auto-save failed:", error);
     }
-  }, [user?.id, createPost, sourceUrl, sourceType]);
+  }, [user?.uid, createPost, updatePost, sourceUrl, sourceType, onDraftCreated]);
+
 
   useEffect(() => {
-    if (!enabled || !content.trim()) return;
+    if (!enabled || (!content.trim() && !sourceUrl?.trim())) return;
 
     // Clear existing timeout
     if (timeoutRef.current) {
@@ -58,7 +95,7 @@ export function useAutoSaveDraft({
 
     // Debounce the save
     timeoutRef.current = setTimeout(() => {
-      saveDraft(content);
+      saveDraft(content, sourceUrl);
     }, debounceMs);
 
     return () => {
@@ -66,18 +103,17 @@ export function useAutoSaveDraft({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [content, enabled, debounceMs, saveDraft]);
+  }, [content, sourceUrl, enabled, debounceMs, saveDraft]);
 
   // Reset refs when component unmounts or content is cleared
   const reset = useCallback(() => {
     draftIdRef.current = null;
     lastSavedContentRef.current = "";
-    hasAutoSavedRef.current = false;
   }, []);
 
   return {
     draftId: draftIdRef.current,
-    hasAutoSaved: hasAutoSavedRef.current,
+    hasAutoSaved: !!draftIdRef.current,
     reset,
   };
 }

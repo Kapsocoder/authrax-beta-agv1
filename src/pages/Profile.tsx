@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { VoiceTrainingSection, VoiceTrainingSectionRef } from "@/components/profile/VoiceTrainingSection";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useUserTopics } from "@/hooks/useUserTopics";
 import { toast } from "sonner";
 
@@ -19,9 +19,10 @@ export default function Profile() {
   const voiceSectionRef = useRef<VoiceTrainingSectionRef>(null);
   const voiceContainerRef = useRef<HTMLDivElement>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  // const [user, setUser] = useState<any>(null); // Replaced by useAuth
   const { topics, addTopic, removeTopic } = useUserTopics();
   const [newTopic, setNewTopic] = useState("");
+  const { user, signOut } = useAuth();
   const [profile, setProfile] = useState({
     fullName: "",
     title: "",
@@ -32,22 +33,15 @@ export default function Profile() {
   });
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-        setProfile({
-          fullName: session.user.user_metadata?.full_name || "",
-          title: "",
-          company: "",
-          location: "",
-          bio: "",
-          linkedinUrl: "",
-        });
-      }
-    });
-  }, [navigate]);
+    if (!user) {
+      // navigate("/auth"); // Handled by AppLayout or useAuth usually
+    } else {
+      setProfile(prev => ({
+        ...prev,
+        fullName: user.displayName || user.email || "",
+      }));
+    }
+  }, [user, navigate]);
 
   // Handle scroll to voice training section
   useEffect(() => {
@@ -55,7 +49,7 @@ export default function Profile() {
     if (state?.scrollToVoice) {
       // Clear the state to prevent re-scrolling on navigation
       window.history.replaceState({}, document.title);
-      
+
       // Wait for render then scroll and expand
       setTimeout(() => {
         voiceSectionRef.current?.expand();
@@ -65,8 +59,12 @@ export default function Profile() {
   }, [location.state]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
+    try {
+      await signOut();
+      navigate("/auth/login");
+    } catch (error: any) {
+      toast.error("Logout failed");
+    }
   };
 
   const handleSave = () => {
@@ -147,9 +145,9 @@ export default function Profile() {
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
               {topics.map((topic) => (
-                <Badge 
-                  key={topic.id} 
-                  variant="secondary" 
+                <Badge
+                  key={topic.id}
+                  variant="secondary"
                   className="px-3 py-1.5 cursor-pointer hover:bg-destructive/20 hover:text-destructive transition-colors"
                   onClick={() => removeTopic.mutate(topic.id)}
                 >
@@ -169,15 +167,15 @@ export default function Profile() {
                 onKeyDown={handleKeyDown}
                 className="flex-1"
               />
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleAddTopic}
                 disabled={!newTopic.trim() || addTopic.isPending}
               >
                 Add
               </Button>
             </div>
-            
+
             {/* Upcoming Feature: Notifications */}
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 mt-4">
               <div className="flex items-center gap-2 text-primary">
