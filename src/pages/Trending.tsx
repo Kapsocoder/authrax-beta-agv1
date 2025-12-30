@@ -311,7 +311,7 @@ export default function Trending() {
             <div className="grid md:grid-cols-2 gap-6">
               {/* Trending Posts */}
               <div className="space-y-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
                   <MessageCircle className="w-5 h-5 text-primary" />
                   Trending Discussions
                   {trendingData?.cached && (
@@ -372,7 +372,7 @@ export default function Trending() {
 
               {/* Latest News */}
               <div className="space-y-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
                   <Newspaper className="w-5 h-5 text-primary" />
                   Latest News
                 </h2>

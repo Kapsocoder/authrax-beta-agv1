@@ -18,7 +18,9 @@ export interface Post {
   template_id?: string | null;
   input_mode?: string | null; // "voice", "url", "video", "pdf", "draft"
   input_context?: string | null;
+  user_instructions?: string | null; // New field for user notes
   source_url?: string | null;
+  media_urls?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -72,11 +74,13 @@ export function usePosts() {
         status: post.status || "draft",
         scheduled_for: post.scheduled_for || null,
         is_ai_generated: post.is_ai_generated || false,
-        ai_prompt: post.ai_prompt || null,
+        ai_prompt: post.ai_prompt || null, // Only for generation snapshot
         template_id: post.template_id || null,
         input_mode: post.input_mode || null,
         input_context: post.input_context || null,
+        user_instructions: post.user_instructions || null, // Save user instructions
         source_url: post.source_url || null,
+        media_urls: post.media_urls || [],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };

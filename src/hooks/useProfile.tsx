@@ -50,13 +50,25 @@ export function useProfile() {
 
       if (docSnap.exists()) {
         const data = docSnap.data();
+
+        const integrationRef = doc(db, `users/${user.uid}/integrations/linkedin`);
+        const integrationSnap = await getDoc(integrationRef);
+        const isConnected = integrationSnap.exists();
+        const integrationData = isConnected ? integrationSnap.data() : null;
+
         // Ensure default values for new fields
         return {
           id: docSnap.id,
           subscription_tier: "free",
           weekly_usage: { count: 0, start_date: new Date().toISOString() },
-          ...data
-        } as Profile;
+          ...data,
+          linkedin_id: data.linkedin_id || (isConnected ? integrationData?.linkedinId : null),
+          linkedin_connected: isConnected,
+          // Fallback to LinkedIn data if profile is empty
+          full_name: data.full_name || (isConnected ? integrationData?.name : null),
+          avatar_url: data.avatar_url || (isConnected ? integrationData?.picture : null),
+          headline: data.headline || (isConnected ? integrationData?.headline : null), // Assuming headline might be saved there too, otherwise null
+        } as unknown as Profile;
       }
 
       // If profile doesn't exist but user is logged in, return null (or create default?)
@@ -74,23 +86,24 @@ export function useProfile() {
   const effectiveIsPro = isPro || isAdminOverride;
 
   const updateProfile = useMutation({
-    mutationFn: async (updates: Partial<Profile>) => {
+    mutationFn: async ({ updates, silent = false }: { updates: Partial<Profile>, silent?: boolean }) => {
       if (!user?.uid) throw new Error("Not authenticated");
 
       const docRef = doc(db, "users", user.uid);
 
-      // Using setDoc with merge: true to handle case where profile doesn't exist yet
       await setDoc(docRef, {
         ...updates,
         user_id: user.uid,
         updated_at: new Date().toISOString()
       }, { merge: true });
 
-      return { ...updates, user_id: user.uid } as Profile;
+      return { updates, silent };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["profile", user?.uid] });
-      toast.success("Profile updated!");
+      if (!data.silent) {
+        toast.success("Profile updated!");
+      }
     },
     onError: (error) => {
       toast.error("Failed to update profile: " + error.message);
@@ -159,7 +172,7 @@ export function useProfile() {
     }
   });
 
-  const isLinkedInLinked = !!(profileQuery.data?.linkedin_id || profileQuery.data?.linkedin_linked_at);
+  const isLinkedInLinked = !!(profileQuery.data?.linkedin_id || (profileQuery.data as any)?.linkedin_connected);
 
   return {
     profile: profileQuery.data,

@@ -7,6 +7,10 @@ import { Label } from "@/components/ui/label";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { SupportDialog } from "@/components/settings/SupportDialog";
+import { BugReportDialog } from "@/components/settings/BugReportDialog";
+
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -33,6 +37,7 @@ export default function Settings() {
       icon: Bell,
       title: "Notifications",
       description: "Manage your notification preferences",
+      status: "coming_soon",
       settings: [
         { label: "Push notifications", description: "Posting reminders", enabled: true },
         { label: "Email notifications", description: "Weekly analytics digest", enabled: false },
@@ -40,18 +45,10 @@ export default function Settings() {
       ],
     },
     {
-      icon: Shield,
-      title: "Privacy & Security",
-      description: "Control your data and security",
-      settings: [
-        { label: "Two-factor authentication", description: "Extra layer of security", enabled: false },
-        { label: "Analytics sharing", description: "Help improve Authrax", enabled: true },
-      ],
-    },
-    {
       icon: Palette,
       title: "Appearance",
       description: "Customize how Authrax looks",
+      status: "coming_soon",
       settings: [
         { label: "Dark mode", description: "Use dark theme", enabled: true },
         { label: "Compact mode", description: "Reduce spacing", enabled: false },
@@ -71,12 +68,16 @@ export default function Settings() {
         </div>
 
         <div className="space-y-6">
+          {/* Settings Sections */}
           {settingsSections.map((section) => (
-            <Card key={section.title} className="bg-card border-border">
+            <Card key={section.title} className={`bg-card border-border ${section.status === 'coming_soon' ? 'opacity-75' : ''}`}>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <section.icon className="w-5 h-5 text-primary" />
                   {section.title}
+                  {section.status === 'coming_soon' && (
+                    <Badge variant="secondary" className="ml-2 text-xs font-normal">Coming Soon</Badge>
+                  )}
                 </CardTitle>
                 <CardDescription>{section.description}</CardDescription>
               </CardHeader>
@@ -87,7 +88,7 @@ export default function Settings() {
                       <Label className="text-foreground">{setting.label}</Label>
                       <p className="text-sm text-muted-foreground">{setting.description}</p>
                     </div>
-                    <Switch defaultChecked={setting.enabled} />
+                    <Switch defaultChecked={setting.enabled} disabled={section.status === 'coming_soon'} />
                   </div>
                 ))}
               </CardContent>
@@ -104,15 +105,14 @@ export default function Settings() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <button className="w-full text-left px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors">
+                <button
+                  onClick={() => toast.info("Documentation coming soon!")}
+                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors flex items-center justify-between group"
+                >
                   <span className="text-foreground">Documentation</span>
                 </button>
-                <button className="w-full text-left px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors">
-                  <span className="text-foreground">Contact Support</span>
-                </button>
-                <button className="w-full text-left px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors">
-                  <span className="text-foreground">Report a Bug</span>
-                </button>
+                <SupportDialog />
+                <BugReportDialog />
               </div>
             </CardContent>
           </Card>

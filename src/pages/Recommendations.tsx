@@ -117,7 +117,7 @@ export default function Recommendations() {
                         </span>
                       ))}
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => navigate("/settings")}>
+                    <Button variant="ghost" size="sm" onClick={() => navigate("/profile")}>
                       <Settings className="w-4 h-4 mr-1" />
                       Manage Topics
                     </Button>

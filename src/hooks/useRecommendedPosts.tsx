@@ -34,20 +34,22 @@ export function useRecommendedPosts() {
     queryFn: async () => {
       if (!user?.uid) return [];
 
-      console.log("useRecommendedPosts: Fetching for user", user.uid);
+
       try {
         const q = query(
           collection(db, "recommended_posts"),
           where("user_id", "==", user.uid),
           where("is_used", "==", false),
           where("expires_at", ">", new Date().toISOString()),
-          orderBy("expires_at"), // Firestore restriction: first orderBy must be same as inequality filter
-          orderBy("generated_at", "desc")
+          orderBy("expires_at") // Firestore restriction: first orderBy must be same as inequality filter
         );
 
         const snapshot = await getDocs(q);
-        console.log(`useRecommendedPosts: Found ${snapshot.size} docs`);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as RecommendedPost[];
+
+        const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as RecommendedPost[];
+
+        // Sort in memory to avoid composite index requirement
+        return posts.sort((a, b) => new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime());
       } catch (error) {
         console.error("useRecommendedPosts: Query failed", error);
         throw error;
@@ -94,7 +96,7 @@ export function useRecommendedPosts() {
 
   const generateRecommendations = useMutation({
     mutationFn: async (forceRefresh: boolean = false) => {
-      console.log("generateRecommendations: Starting...", { userId: user?.uid, topics: activeTopics, forceRefresh });
+
 
       if (!user?.uid) {
         console.error("generateRecommendations: No User ID");
@@ -105,7 +107,7 @@ export function useRecommendedPosts() {
         throw new Error("No topics configured");
       }
 
-      console.log("generateRecommendations: Calling Cloud Function via fetch...");
+
       try {
         const token = await user.getIdToken();
         const response = await fetch("https://us-central1-authrax-beta-lv1.cloudfunctions.net/generateRecommendations", {
@@ -127,7 +129,7 @@ export function useRecommendedPosts() {
         }
 
         const data = await response.json();
-        console.log("generateRecommendations: Success", data);
+
         return data as any;
       } catch (err) {
         console.error("generateRecommendations: Function call failed", err);

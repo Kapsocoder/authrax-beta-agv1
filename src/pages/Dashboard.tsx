@@ -33,11 +33,17 @@ import { useProfile } from "@/hooks/useProfile";
 import { useVoiceProfile } from "@/hooks/useVoiceProfile";
 import { usePosts } from "@/hooks/usePosts";
 import { useUserTopics } from "@/hooks/useUserTopics";
-import { useTrending } from "@/hooks/useTrending";
+import { useTrending, NewsItem, TrendingPost } from "@/hooks/useTrending";
 import { useRecommendedPosts, RecommendedPost } from "@/hooks/useRecommendedPosts";
 import { RecommendedPostCard } from "@/components/recommendations/RecommendedPostCard";
 import { RecommendedPostsSection } from "@/components/recommendations/RecommendedPostsSection";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -49,6 +55,8 @@ export default function Dashboard() {
   const { topics } = useUserTopics();
   const [greeting, setGreeting] = useState("");
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<TrendingPost | null>(null);
+  const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
 
   // Check if coming from LinkedIn OAuth onboarding
   const isLinkedInOnboarding = searchParams.get("onboarding") === "linkedin";
@@ -66,22 +74,44 @@ export default function Dashboard() {
     }
   }, [profileLoading, needsOnboarding]);
 
-  const handleLogout = async () => {
-    await signOut();
-    toast.success("Logged out successfully");
-    navigate("/auth");
-  };
+  // --- DERIVED STATE (HOOKS BEFORE CONDITIONAL RETURN) ---
 
-  if (showOnboarding) {
-    return (
-      <OnboardingFlow
-        onComplete={() => setShowOnboarding(false)}
-        isLinkedInLogin={isLinkedInOnboarding}
-      />
-    );
-  }
+  const postsThisWeek = useMemo(() => {
+    if (!posts) return 0;
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
 
-  // "What's on your mind?" capture options
+    return posts.filter(p => {
+      // Strict check for published status
+      if (p.status !== "published") return false;
+
+      // Use published_at, falling back to updated_at if missing (e.g. legacy data)
+      // We avoid created_at because an old draft published today should count
+      const publishDate = p.published_at ? new Date(p.published_at) : new Date(p.updated_at);
+
+      return publishDate > weekAgo;
+    }).length;
+  }, [posts]);
+
+  // Recent drafts - sorted by updated_at, show most recent 3
+  const recentDrafts = useMemo(() => {
+    return (posts || [])
+      .filter(p => p.status === "draft")
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .slice(0, 3);
+  }, [posts]);
+
+  // Trending Topics Logic
+  const trendingTopics = topics.length > 0
+    ? topics.filter(t => t.is_active).map(t => t.name)
+    : ["AI in Business", "Leadership", "Remote Work", "Career Growth", "Productivity", "Tech Trends"];
+
+  // Fetch trending data based on user's topics
+  const { data: trendingData, isLoading: trendingLoading } = useTrending(trendingTopics);
+
+  // --------------------------------------------------------
+
+  // "What's on your mind?" capture options (Constants)
   const captureOptions = [
     {
       icon: Mic,
@@ -114,14 +144,14 @@ export default function Dashboard() {
       state: { mode: "url" },
       gradient: "from-blue-500 to-cyan-500",
     },
-    {
+    /* {
       icon: Video,
       label: "From a Video",
       description: "Repurpose video content",
       path: "/create",
       state: { mode: "video" },
       gradient: "from-red-500 to-pink-500",
-    },
+    }, */
     {
       icon: FileText,
       label: "Repurpose a PDF",
@@ -149,57 +179,43 @@ export default function Dashboard() {
     },
     {
       icon: Sparkles,
-      label: "Train Voice",
-      description: "Improve AI accuracy",
+      label: "Brand DNA",
+      description: "Train your voice",
       path: "/profile",
       state: { scrollToVoice: true },
       gradient: "from-warning to-orange-500",
     },
   ];
 
-  const postsThisWeek = useMemo(() => {
-    if (!posts) return 0;
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-
-    return posts.filter(p => {
-      // Strict check for published status
-      if (p.status !== "published") return false;
-
-      // Use published_at, falling back to updated_at if missing (e.g. legacy data)
-      // We avoid created_at because an old draft published today should count
-      const publishDate = p.published_at ? new Date(p.published_at) : new Date(p.updated_at);
-
-      return publishDate > weekAgo;
-    }).length;
-  }, [posts]);
-
   const scheduledCount = posts?.filter(p => p.status === "scheduled").length || 0;
-  const voiceScore = voiceProfile?.is_trained ? "85%" : "Train";
+
+  // Voice Score / Brand DNA Status
+  const getVoiceStatus = () => {
+    if (voiceProfile?.is_trained) return "Active";
+    if (voiceProfile?.isActive) return "Active";
+    return "Analyze";
+  };
+
+  const voiceStatus = getVoiceStatus();
 
   const stats = [
     { label: "Posts This Week", value: String(postsThisWeek), icon: PenSquare, path: "/drafts" },
     { label: "Total Impressions", value: "—", icon: TrendingUp, path: "/analytics" },
     { label: "Scheduled", value: String(scheduledCount), icon: Clock, path: "/schedule" },
-    { label: "Voice Score", value: voiceScore, icon: Target, path: "/profile", state: { scrollToVoice: true } },
+    { label: "Brand DNA", value: voiceStatus, icon: Target, path: "/profile", state: { scrollToVoice: true } },
   ];
 
-  const userName = user?.user_metadata?.full_name || profile?.full_name || user?.email?.split('@')[0] || "there";
+  const rawName = user?.user_metadata?.full_name || profile?.full_name || user?.email?.split('@')[0] || "there";
+  const userName = useMemo(() => {
+    const firstPart = rawName.split(/[ _]/)[0];
+    return firstPart.charAt(0).toUpperCase() + firstPart.slice(1);
+  }, [rawName]);
 
-  const trendingTopics = topics.length > 0
-    ? topics.filter(t => t.is_active).map(t => t.name)
-    : ["AI in Business", "Leadership", "Remote Work", "Career Growth", "Productivity", "Tech Trends"];
-
-  // Fetch trending data based on user's topics
-  const { data: trendingData, isLoading: trendingLoading } = useTrending(trendingTopics);
-
-  // Recent drafts - sorted by updated_at, show most recent 3
-  const recentDrafts = useMemo(() => {
-    return (posts || [])
-      .filter(p => p.status === "draft")
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-      .slice(0, 3);
-  }, [posts]);
+  const handleLogout = async () => {
+    await signOut();
+    toast.success("Logged out successfully");
+    navigate("/auth");
+  };
 
   const formatTimeAgo = (timestamp: number | string) => {
     const date = typeof timestamp === "number" ? new Date(timestamp * 1000) : new Date(timestamp);
@@ -213,9 +229,22 @@ export default function Dashboard() {
     return "Just now";
   };
 
+  const handleCreatePostFromPost = (post: TrendingPost) => {
+    const prefilledContent = `Topic: ${post.title}\n\nContext: ${post.selftext || "Trending discussion from r/" + post.subreddit}\n\nSource: https://reddit.com${post.permalink}`;
+    navigate("/create", { state: { mode: "draft", prefilledContent } });
+  };
+
+  const handleCreatePostFromNews = (news: NewsItem) => {
+    const prefilledContent = `Topic: ${news.title}\n\nSummary: ${news.description}\n\nSource: ${news.link}`;
+    navigate("/create", { state: { mode: "draft", prefilledContent } });
+  };
+
   // Smart edit routing - if draft has generated content (is_ai_generated), go to Edit mode
   // Otherwise go to Studio to continue working on it
   const handleEditDraft = (draft: Post) => {
+    // Determine target mode based on saved input_mode or fallback
+    const sourceType = draft.input_mode || draft.ai_prompt || "draft";
+
     if (draft.is_ai_generated) {
       // Has generated content - go to Edit Post screen
       navigate("/create", {
@@ -223,7 +252,12 @@ export default function Dashboard() {
           mode: "edit",
           postId: draft.id,
           content: draft.content,
-          aiPrompt: draft.ai_prompt
+          aiPrompt: draft.ai_prompt,
+          // Hydrate other fields
+          inputContext: draft.input_context,
+          sourceUrl: draft.source_url,
+          sourceType: sourceType,
+          templateId: draft.template_id
         }
       });
     } else {
@@ -233,11 +267,25 @@ export default function Dashboard() {
           mode: "resume",
           postId: draft.id,
           content: draft.content,
-          sourceType: draft.ai_prompt // ai_prompt stores the source type for non-generated drafts
+          // For resume mode, we primarily need the source type and context
+          sourceType: sourceType,
+          inputContext: draft.input_context,
+          sourceUrl: draft.source_url,
+          templateId: draft.template_id,
+          aiPrompt: draft.ai_prompt
         }
       });
     }
   };
+
+  if (showOnboarding) {
+    return (
+      <OnboardingFlow
+        onComplete={() => setShowOnboarding(false)}
+        isLinkedInLogin={isLinkedInOnboarding}
+      />
+    );
+  }
 
   return (
     <AppLayout onLogout={handleLogout}>
@@ -356,7 +404,7 @@ export default function Dashboard() {
                       <div
                         key={`${news.link}-${index}`}
                         className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/50 cursor-pointer transition-all"
-                        onClick={() => window.open(news.link, "_blank")}
+                        onClick={() => setSelectedNews(news)}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
@@ -397,7 +445,7 @@ export default function Dashboard() {
                       <div
                         key={`${post.permalink}-${index}`}
                         className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/50 cursor-pointer transition-all"
-                        onClick={() => window.open(post.permalink, "_blank")}
+                        onClick={() => setSelectedPost(post)}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
@@ -471,6 +519,103 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Post Detail Dialog */}
+      <Dialog open={!!selectedPost} onOpenChange={() => setSelectedPost(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Badge variant="outline">r/{selectedPost?.subreddit}</Badge>
+              Trending Discussion
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedPost && (
+            <div className="space-y-4">
+              <div className="bg-secondary/50 rounded-lg p-4">
+                <h3 className="font-semibold text-lg mb-2">{selectedPost.title}</h3>
+                {selectedPost.selftext && (
+                  <p className="text-muted-foreground whitespace-pre-wrap">
+                    {selectedPost.selftext}
+                  </p>
+                )}
+                <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
+                  <span>↑ {selectedPost.score} upvotes</span>
+                  <span>{selectedPost.numComments} comments</span>
+                  <span>by u/{selectedPost.author}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="gradient"
+                  className="flex-1"
+                  onClick={() => {
+                    handleCreatePostFromPost(selectedPost);
+                    setSelectedPost(null);
+                  }}
+                >
+                  Create Post About This
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => window.open(selectedPost.permalink, "_blank")}
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  View on Reddit
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* News Detail Dialog */}
+      <Dialog open={!!selectedNews} onOpenChange={() => setSelectedNews(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Badge variant="secondary">{selectedNews?.source}</Badge>
+              News Article
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedNews && (
+            <div className="space-y-4">
+              <div className="bg-secondary/50 rounded-lg p-4">
+                <h3 className="font-semibold text-lg mb-2">{selectedNews.title}</h3>
+                <p className="text-muted-foreground">
+                  {selectedNews.description}
+                </p>
+                <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
+                  <Badge variant="outline">{selectedNews.category}</Badge>
+                  <span>{formatTimeAgo(selectedNews.pubDate)}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="gradient"
+                  className="flex-1"
+                  onClick={() => {
+                    handleCreatePostFromNews(selectedNews);
+                    setSelectedNews(null);
+                  }}
+                >
+                  Create Post About This
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => window.open(selectedNews.link, "_blank")}
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Read Full Article
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

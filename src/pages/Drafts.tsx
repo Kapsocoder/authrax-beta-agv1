@@ -41,9 +41,10 @@ export default function Drafts() {
         aiPrompt: post.ai_prompt,
         // Pass new fields for full state restoration
         templateId: post.template_id,
-        sourceType: post.input_mode,
+        sourceType: post.input_mode || post.ai_prompt, // Fallback for legacy
         inputContext: post.input_context,
-        sourceUrl: post.source_url
+        sourceUrl: post.source_url,
+        user_instructions: post.user_instructions // Pass instructions for correct restoration
       }
     });
   };
@@ -67,19 +68,21 @@ export default function Drafts() {
 
   // Get icon based on content type
   const getContentTypeIcon = (post: Post) => {
-    if (post.ai_prompt?.includes("voice")) return Mic;
-    if (post.ai_prompt?.includes("url") || post.ai_prompt?.includes("link")) return Link2;
-    if (post.ai_prompt?.includes("video")) return Video;
-    if (post.ai_prompt?.includes("pdf")) return PDFIcon;
+    const type = post.input_mode || post.ai_prompt || "";
+    if (type.includes("voice")) return Mic;
+    if (type.includes("url") || type.includes("link")) return Link2;
+    if (type.includes("video")) return Video;
+    if (type.includes("pdf")) return PDFIcon;
     if (post.is_ai_generated) return Sparkles;
     return FileText;
   };
 
   const getContentTypeBadge = (post: Post) => {
-    if (post.ai_prompt?.includes("voice")) return "Voice Note";
-    if (post.ai_prompt?.includes("url") || post.ai_prompt?.includes("link")) return "From Link";
-    if (post.ai_prompt?.includes("video")) return "From Video";
-    if (post.ai_prompt?.includes("pdf")) return "From PDF";
+    const type = post.input_mode || post.ai_prompt || "";
+    if (type.includes("voice")) return "Voice Note";
+    if (type.includes("url") || type.includes("link")) return "From Link";
+    if (type.includes("video")) return "From Video";
+    if (type.includes("pdf")) return "From PDF";
     if (post.is_ai_generated) return "AI Generated";
     return "Manual";
   };
@@ -167,7 +170,7 @@ export default function Drafts() {
 
                     {/* Content Preview */}
                     <p className="text-sm text-foreground line-clamp-4 mb-4 min-h-[80px]">
-                      {draft.content || "Empty draft..."}
+                      {draft.content || draft.input_context || draft.user_instructions || draft.source_url || "Empty draft..."}
                     </p>
 
                     {/* AI Prompt hint */}

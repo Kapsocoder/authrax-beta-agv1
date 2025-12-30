@@ -1,322 +1,406 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
-import { Sparkles, FileText, Brain, Zap, Loader2, CheckCircle2, Edit3, Save, X, ChevronDown, ChevronUp, Trash2, Plus, ArrowRight } from "lucide-react";
+import { Sparkles, FileText, Loader2, CheckCircle2, ArrowRight, Eye, ChevronUp, ChevronDown, Plus, Trash2, Brain, X, Save, Edit3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useVoiceProfile } from "@/hooks/useVoiceProfile";
 import { toast } from "sonner";
+import { BrandDNAModal } from "./BrandDNAModal";
 
 export interface VoiceTrainingSectionRef {
-  expand: () => void;
+    expand: () => void;
 }
 
 export const VoiceTrainingSection = forwardRef<VoiceTrainingSectionRef>(function VoiceTrainingSection(_, ref) {
-  const { voiceProfile, isLoading, analyzeVoice, updateVoiceProfile } = useVoiceProfile();
-  const [currentPost, setCurrentPost] = useState("");
-  const [savedPosts, setSavedPosts] = useState<string[]>([]);
-  const [isEditingPrompt, setIsEditingPrompt] = useState(false);
-  const [editedPrompt, setEditedPrompt] = useState("");
-  const [isExpanded, setIsExpanded] = useState(false);
+    const { voiceProfile, isLoading, analyzeVoice, updateVoiceProfile } = useVoiceProfile();
+    const [currentPost, setCurrentPost] = useState("");
+    const [savedPosts, setSavedPosts] = useState<string[]>([]);
+    const [isExpanded, setIsExpanded] = useState(false);
 
-  // Expose expand method via ref
-  useImperativeHandle(ref, () => ({
-    expand: () => setIsExpanded(true),
-  }));
+    // Post Edit State
+    const [selectedPostIndex, setSelectedPostIndex] = useState<number | null>(null);
+    const [editedPostContent, setEditedPostContent] = useState("");
 
-  // Sync saved posts with voice profile when it loads
-  useEffect(() => {
-    if (voiceProfile?.sample_posts) {
-      setSavedPosts(voiceProfile.sample_posts);
-    }
-  }, [voiceProfile?.sample_posts]);
+    // Brand DNA State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisStartTime, setAnalysisStartTime] = useState<number | null>(null);
+    const [analysisStep, setAnalysisStep] = useState(0);
 
-  const handleSavePost = () => {
-    if (!currentPost.trim()) {
-      toast.error("Please enter a post to save");
-      return;
-    }
+    const analysisSteps = [
+        "Understanding tone...",
+        "Analyzing sentence structure...",
+        "Identifying formatting preferences...",
+        "Extracting core beliefs...",
+        "Finalizing Brand DNA..."
+    ];
 
-    if (currentPost.trim().length < 50) {
-      toast.error("Post should be at least 50 characters");
-      return;
-    }
+    // Helper to check if profile is truly trained/active
+    const isProfileActive = voiceProfile?.is_trained || voiceProfile?.isActive;
 
-    if (savedPosts.length >= 10) {
-      toast.error("Maximum 10 posts allowed. Remove one to add more.");
-      return;
-    }
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (isAnalyzing) {
+            setAnalysisStep(0);
+            interval = setInterval(() => {
+                setAnalysisStep((prev) => (prev + 1) % analysisSteps.length);
+            }, 2000); // 2 seconds per step
+        }
+        return () => clearInterval(interval);
+    }, [isAnalyzing]);
 
-    setSavedPosts([...savedPosts, currentPost.trim()]);
-    setCurrentPost("");
-    toast.success("Post saved!");
-  };
+    // Monitor database changes to stop analysis
+    useEffect(() => {
+        // Only stop analyzing if:
+        // 1. We are currently analyzing
+        // 2. The profile is active (has data)
+        // 3. The profile has been updated AFTER we started analysis
+        if (isAnalyzing && isProfileActive && voiceProfile?.updated_at && analysisStartTime) {
+            const updatedAtTime = new Date(voiceProfile.updated_at).getTime();
+            if (updatedAtTime > analysisStartTime) {
+                setIsAnalyzing(false);
+                setAnalysisStartTime(null);
+                toast.success("Brand DNA analysis complete!");
+            }
+        }
+    }, [isProfileActive, voiceProfile?.updated_at, isAnalyzing, analysisStartTime]);
 
-  const handleRemovePost = (index: number) => {
-    setSavedPosts(savedPosts.filter((_, i) => i !== index));
-  };
+    // Expose expand method via ref
+    useImperativeHandle(ref, () => ({
+        expand: () => setIsExpanded(true),
+    }));
 
-  const handleAnalyze = async () => {
-    if (savedPosts.length < 3) {
-      toast.error("Please save at least 3 posts to analyze your voice");
-      return;
-    }
+    // Sync saved posts with voice profile when it loads
+    useEffect(() => {
+        if (voiceProfile?.draft_posts) {
+            setSavedPosts(voiceProfile.draft_posts);
+        }
+    }, [voiceProfile?.draft_posts]);
 
-    await analyzeVoice.mutateAsync(savedPosts);
-  };
+    const handleSavePost = async () => {
+        if (!currentPost.trim()) {
+            toast.error("Please enter a post to save");
+            return;
+        }
 
-  const handleEditPrompt = () => {
-    setEditedPrompt(voiceProfile?.system_prompt || "");
-    setIsEditingPrompt(true);
-  };
+        if (currentPost.trim().length < 50) {
+            toast.error("Post should be at least 50 characters");
+            return;
+        }
 
-  const handleSavePrompt = async () => {
-    await updateVoiceProfile.mutateAsync({ system_prompt: editedPrompt });
-    setIsEditingPrompt(false);
-  };
+        if (savedPosts.length >= 20) {
+            toast.error("Maximum 20 posts allowed. Remove one to add more.");
+            return;
+        }
 
-  const handleCancelEdit = () => {
-    setIsEditingPrompt(false);
-    setEditedPrompt("");
-  };
+        const newPosts = [...savedPosts, currentPost.trim()];
+        setSavedPosts(newPosts); // Optimistic update
+        setCurrentPost("");
 
-  const voiceScore = voiceProfile?.is_trained ? 75 + Math.min(25, (voiceProfile.sample_posts?.length || 0) * 5) : 0;
+        try {
+            await updateVoiceProfile.mutateAsync({ draft_posts: newPosts });
+        } catch (error) {
+            // Error toast handled in hook
+        }
+    };
 
-  const voiceTraits = [
-    { label: "Tone", value: voiceProfile?.tone || "Not analyzed" },
-    { label: "Sentence Length", value: voiceProfile?.sentence_length || "Not analyzed" },
-    { label: "Emoji Usage", value: voiceProfile?.emoji_usage || "Not analyzed" },
-    { label: "Writing Style", value: voiceProfile?.writing_style || "Not analyzed" },
-  ];
+    const handleRemovePost = async (index: number) => {
+        const newPosts = savedPosts.filter((_, i) => i !== index);
+        setSavedPosts(newPosts); // Optimistic update
 
-  return (
-    <Card className="bg-card border-border">
-      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-secondary/30 transition-colors rounded-t-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow">
-                  <Sparkles className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    Train Your Voice
-                    {voiceProfile?.is_trained && (
-                      <CheckCircle2 className="w-4 h-4 text-success" />
-                    )}
-                  </CardTitle>
-                  <CardDescription>
-                    AI learns to write in your unique style
-                  </CardDescription>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right hidden sm:block">
-                  <span className="text-2xl font-bold text-gradient-primary">{voiceScore}%</span>
-                  <p className="text-xs text-muted-foreground">Voice Score</p>
-                </div>
-                {isExpanded ? (
-                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                )}
-              </div>
-            </div>
-            <Progress value={voiceScore} className="h-1.5 mt-3" />
-          </CardHeader>
-        </CollapsibleTrigger>
-        
-        <CollapsibleContent>
-          <CardContent className="pt-0 space-y-6">
-            {/* Add New Post */}
-            <div className="p-4 rounded-xl bg-secondary/30 border border-border">
-              <div className="flex items-center gap-2 mb-3">
-                <FileText className="w-5 h-5 text-primary" />
-                <h4 className="font-medium text-foreground">Paste Your Best Posts</h4>
-              </div>
-              <Textarea
-                placeholder="Paste a LinkedIn post here..."
-                value={currentPost}
-                onChange={(e) => setCurrentPost(e.target.value)}
-                className="min-h-[100px] mb-3 text-foreground"
-              />
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {savedPosts.length}/10 posts saved • Min 50 characters each
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSavePost}
-                  disabled={!currentPost.trim()}
-                  className="gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Save Post
-                </Button>
-              </div>
-            </div>
+        // Close modal if open for this index
+        if (selectedPostIndex === index) {
+            setSelectedPostIndex(null);
+        }
 
-            {/* Saved Posts Cards */}
-            {savedPosts.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="font-medium text-foreground text-sm">
-                  Saved Posts ({savedPosts.length})
-                </h4>
-                
-                <div className="grid gap-3">
-                  {savedPosts.map((post, index) => (
-                    <div
-                      key={index}
-                      className="p-4 rounded-lg bg-secondary/50 border border-border group hover:border-primary/30 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
-                              Post {index + 1}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {post.length} chars
-                            </span>
-                          </div>
-                          <p className="text-sm text-foreground line-clamp-3">
-                            {post}
-                          </p>
+        try {
+            await updateVoiceProfile.mutateAsync({ draft_posts: newPosts });
+        } catch (error) {
+            // Error handled in hook
+        }
+    };
+
+    const handlePostClick = (index: number) => {
+        setSelectedPostIndex(index);
+        setEditedPostContent(savedPosts[index]);
+    };
+
+    const handleUpdatePost = async () => {
+        if (selectedPostIndex === null) return;
+
+        if (!editedPostContent.trim()) {
+            toast.error("Post content cannot be empty.");
+            return;
+        }
+
+        if (editedPostContent.trim().length < 50) {
+            toast.error("Post should be at least 50 characters");
+            return;
+        }
+
+        const newPosts = [...savedPosts];
+        newPosts[selectedPostIndex] = editedPostContent.trim();
+        setSavedPosts(newPosts); // Optimistic
+        setSelectedPostIndex(null); // Close modal
+
+        try {
+            await updateVoiceProfile.mutateAsync({ draft_posts: newPosts });
+            toast.success("Post updated successfully");
+        } catch (error) {
+            // Error handled in hook
+        }
+    };
+
+    const handleDeleteFromModal = () => {
+        if (selectedPostIndex !== null) {
+            handleRemovePost(selectedPostIndex);
+            setSelectedPostIndex(null);
+        }
+    };
+
+    const handleAnalyze = async () => {
+        if (savedPosts.length < 5) {
+            toast.error("Please save at least 5 posts to analyze your brand");
+            return;
+        }
+
+        setIsAnalyzing(true);
+        setAnalysisStartTime(Date.now());
+
+        try {
+            // Trigger the backend process
+            await analyzeVoice.mutateAsync(savedPosts);
+        } catch (error) {
+            console.error("Analysis trigger failed", error);
+            setIsAnalyzing(false);
+            setAnalysisStartTime(null);
+        }
+    };
+
+    // Check if posts have changed since last training
+    // Compare current savedPosts (drafts) with the posts used for training (sample_posts)
+    const hasUnsavedChanges = !voiceProfile?.sample_posts ||
+        JSON.stringify(savedPosts) !== JSON.stringify(voiceProfile.sample_posts);
+
+    // Can analyze if:
+    // 1. Enough posts (>= 5)
+    // 2. AND logic: (Has unsaved changes OR Profile is not active yet)
+    // If profile is active but posts are same as trained, hasUnsavedChanges is false -> canAnalyze is false.
+    // If profile is active and posts differ, hasUnsavedChanges is true -> canAnalyze is true.
+    const canAnalyze = savedPosts.length >= 5 && (hasUnsavedChanges || !isProfileActive);
+
+    // Score calculation
+    let calculatedScore = 0;
+    if (voiceProfile?.expression_layer || voiceProfile?.tone) calculatedScore += 25;
+    if (voiceProfile?.belief_layer) calculatedScore += 25;
+    if (voiceProfile?.judgement_layer) calculatedScore += 25;
+    if (voiceProfile?.governance_layer) calculatedScore += 25;
+
+    const voiceScore = calculatedScore;
+
+    return (
+        <Card className="bg-card border-border">
+            <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+                <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover:bg-secondary/30 transition-colors rounded-t-lg">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow">
+                                    <Sparkles className="w-5 h-5 text-primary-foreground" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        Train Your Brand
+                                        {isProfileActive && (
+                                            <CheckCircle2 className="w-4 h-4 text-success" />
+                                        )}
+                                    </CardTitle>
+                                    <CardDescription>
+                                        AI learns to write in your unique style
+                                    </CardDescription>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="text-right hidden sm:block">
+                                    <span className="text-2xl font-bold text-gradient-primary">{voiceScore}%</span>
+                                    <p className="text-xs text-muted-foreground">Brand DNA Score</p>
+                                </div>
+                                {isExpanded ? (
+                                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                                ) : (
+                                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                                )}
+                            </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => handleRemovePost(index)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                        <Progress value={voiceScore} className="h-1.5 mt-3" />
+                    </CardHeader>
+                </CollapsibleTrigger>
+
+                <CollapsibleContent>
+                    <CardContent className="pt-0 space-y-6">
+                        {/* Add New Post */}
+                        <div className="p-4 rounded-xl bg-secondary/30 border border-border">
+                            <div className="flex items-center gap-2 mb-3">
+                                <FileText className="w-5 h-5 text-primary" />
+                                <h4 className="font-medium text-foreground">Paste Your Best Posts</h4>
+                            </div>
+                            <Textarea
+                                placeholder="Paste a LinkedIn post here..."
+                                value={currentPost}
+                                onChange={(e) => setCurrentPost(e.target.value)}
+                                className="min-h-[100px] mb-3 text-foreground"
+                            />
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs text-muted-foreground">
+                                    {savedPosts.length}/20 posts saved • Min 50 characters each
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleSavePost}
+                                    disabled={!currentPost.trim() || updateVoiceProfile.isPending}
+                                    className="gap-2"
+                                >
+                                    {updateVoiceProfile.isPending && currentPost ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Plus className="w-4 h-4" />
+                                    )}
+                                    Save Post
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Saved Posts Cards */}
+                        {savedPosts.length > 0 && (
+                            <div className="space-y-3">
+                                <h4 className="font-medium text-foreground text-sm">
+                                    Saved Posts ({savedPosts.length})
+                                </h4>
+
+                                <div className="grid gap-3 max-h-[320px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {savedPosts.map((post, index) => (
+                                        <div
+                                            key={index}
+                                            onClick={() => handlePostClick(index)}
+                                            className="p-4 rounded-lg bg-secondary/50 border border-border group hover:border-primary/30 transition-colors cursor-pointer"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
+                                                            Post {index + 1}
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {post.length} chars
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-foreground line-clamp-3">
+                                                        {post}
+                                                    </p>
+                                                </div>
+                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground">
+                                                    <Edit3 className="w-4 h-4" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <p className="text-xs text-muted-foreground text-center">
+                                    Tip: Include 5-10 of your best posts for optimal brand training
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Analyze Button */}
+                        <div className="flex flex-col items-center gap-3">
+                            <Button
+                                variant={canAnalyze ? "gradient" : "secondary"}
+                                size="lg"
+                                onClick={handleAnalyze}
+                                disabled={isAnalyzing || !canAnalyze}
+                                className={`gap-2 px-8 min-w-[200px] transition-all duration-300 ${!canAnalyze ? 'opacity-70 grayscale' : ''}`}
+                            >
+                                {isAnalyzing ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        {analysisSteps[analysisStep]}
+                                    </>
+                                ) : !canAnalyze && isProfileActive ? (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        Brand DNA Active
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles className="w-4 h-4" />
+                                        Analyse My Brand
+                                        <ArrowRight className="w-4 h-4" />
+                                    </>
+                                )}
+                            </Button>
+
+                            {!isAnalyzing && isProfileActive && (
+                                <Button variant="outline" size="lg" onClick={() => setIsModalOpen(true)} className="gap-2 text-primary hover:text-primary/80 min-w-[200px]">
+                                    <Eye className="w-4 h-4" />
+                                    View My Brand DNA
+                                </Button>
+                            )}
+                        </div>
+
+                    </CardContent>
+                </CollapsibleContent>
+            </Collapsible>
+
+            <BrandDNAModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                voiceProfile={voiceProfile}
+            />
+
+            <Dialog open={selectedPostIndex !== null} onOpenChange={(open) => !open && setSelectedPostIndex(null)}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Edit Post {selectedPostIndex !== null ? selectedPostIndex + 1 : ''}</DialogTitle>
+                        <DialogDescription>
+                            Make changes to your saved post or delete it properly.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        <Textarea
+                            value={editedPostContent}
+                            onChange={(e) => setEditedPostContent(e.target.value)}
+                            className="min-h-[200px] font-mono text-sm leading-relaxed"
+                            placeholder="Post content..."
+                        />
                     </div>
-                  ))}
-                </div>
 
-                <p className="text-xs text-muted-foreground text-center">
-                  Tip: Include 5-10 of your best posts for optimal voice training
-                </p>
-              </div>
-            )}
-
-            {/* LinkedIn Import - Coming Soon */}
-            <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Zap className="w-4 h-4" />
-                <span className="text-sm">LinkedIn import coming soon - Use paste method for now</span>
-              </div>
-            </div>
-
-            {/* Analyze Button - Centered, activates with 3+ posts */}
-            <div className="flex justify-center">
-              <Button
-                variant="gradient"
-                size="lg"
-                onClick={handleAnalyze}
-                disabled={analyzeVoice.isPending || savedPosts.length < 3}
-                className="gap-2 px-8"
-              >
-                {analyzeVoice.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Analyze My Voice
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {/* Voice Profile - Always show, with "Not Analyzed" state when not trained */}
-            <div className="p-4 rounded-xl bg-secondary/30 border border-border">
-              <div className="flex items-center gap-2 mb-3">
-                <Brain className="w-5 h-5 text-primary" />
-                <h4 className="font-medium text-foreground">Your Voice Profile</h4>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">What the AI knows about your writing style</p>
-              <div className="grid grid-cols-2 gap-3">
-                {voiceTraits.map((trait) => (
-                  <div key={trait.label} className="p-3 rounded-lg bg-muted/50 border border-border">
-                    <h5 className="text-xs font-medium text-foreground mb-1">{trait.label}</h5>
-                    <p className="text-sm text-muted-foreground capitalize">
-                      {voiceProfile?.is_trained ? trait.value : "Not Analyzed"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* System Prompt - Always show */}
-            <div className="p-4 rounded-xl bg-secondary/30 border border-border">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Edit3 className="w-5 h-5 text-primary" />
-                  <div>
-                    <h4 className="font-medium text-foreground">System Prompt</h4>
-                    <p className="text-xs text-muted-foreground">The instructions that guide AI generation in your voice</p>
-                  </div>
-                </div>
-                {!isEditingPrompt && voiceProfile?.system_prompt && (
-                  <Button variant="ghost" size="sm" onClick={handleEditPrompt}>
-                    <Edit3 className="w-4 h-4 mr-1" />
-                    Edit
-                  </Button>
-                )}
-              </div>
-              
-              {isEditingPrompt ? (
-                <div className="space-y-3">
-                  <Textarea
-                    value={editedPrompt}
-                    onChange={(e) => setEditedPrompt(e.target.value)}
-                    className="min-h-[120px] text-foreground"
-                    placeholder="Enter your custom system prompt..."
-                  />
-                  <div className="flex gap-2 justify-end">
-                    <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
-                      <X className="w-4 h-4 mr-1" />
-                      Cancel
-                    </Button>
-                    <Button 
-                      variant="gradient" 
-                      size="sm" 
-                      onClick={handleSavePrompt}
-                      disabled={updateVoiceProfile.isPending}
-                    >
-                      {updateVoiceProfile.isPending ? (
-                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      ) : (
-                        <Save className="w-4 h-4 mr-1" />
-                      )}
-                      Save
-                    </Button>
-                  </div>
-                </div>
-              ) : voiceProfile?.system_prompt ? (
-                <pre className="text-sm text-foreground whitespace-pre-wrap font-mono p-3 rounded-lg bg-muted/50 border border-border max-h-32 overflow-y-auto">
-                  {voiceProfile.system_prompt}
-                </pre>
-              ) : (
-                <div className="text-center py-6 text-muted-foreground">
-                  <Brain className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No system prompt generated yet</p>
-                  <p className="text-xs mt-1">Train your voice profile to generate a custom prompt</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
-  );
+                    <div className="flex items-center justify-between">
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeleteFromModal}
+                            disabled={updateVoiceProfile.isPending}
+                        >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Post
+                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="ghost" onClick={() => setSelectedPostIndex(null)}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleUpdatePost} disabled={updateVoiceProfile.isPending}>
+                                {updateVoiceProfile.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                Save Changes
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </Card>
+    );
 });

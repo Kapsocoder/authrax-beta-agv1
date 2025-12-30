@@ -31,6 +31,7 @@ import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
 import { TemplateLibraryDialog } from "@/components/templates/TemplateLibraryDialog";
 import { TemplateCard } from "@/components/templates/TemplateCard";
 import { FloatingVoiceBar } from "@/components/studio/FloatingVoiceBar";
+import { GenerateImageDialog } from "@/components/studio/GenerateImageDialog";
 import { Template, useTemplate, useTemplates } from "@/hooks/useTemplates";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
@@ -48,6 +49,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -58,6 +60,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { functions } from "@/firebaseConfig";
+import { httpsCallable } from "firebase/functions";
+import { storage } from "@/firebaseConfig";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 type StudioMode = "voice" | "draft" | "url" | "video" | "pdf" | null;
 
@@ -101,8 +107,10 @@ export default function Create() {
   const [mode, setMode] = useState<StudioMode>(getInitialModeFromResume());
   const [capturedContent, setCapturedContent] = useState(
     prefilledContent ||
-    (initialMode === "resume" ? (location.state?.content as string || "") : "") ||
-    aiPrompt ||
+    (initialMode === "resume" ? (location.state?.inputContext as string || location.state?.content as string || "") : "") ||
+    // Legacy fallback: Only use aiPrompt if we don't know the source type, 
+    // or if it's NOT a structured type (url/video/pdf/voice) where aiPrompt means "notes"
+    (!location.state?.inputContext && aiPrompt && !["url", "video", "pdf", "voice"].includes(resumeSourceType || "") ? aiPrompt : "") ||
     ""
   );
 
@@ -118,23 +126,26 @@ export default function Create() {
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [urlInput, setUrlInput] = useState(
-    resumeSourceUrl ||
-      ((initialMode === "resume" || initialMode === "edit") && aiPrompt?.includes("Source:"))
+    resumeSourceUrl ??
+    (((initialMode === "resume" || initialMode === "edit") && aiPrompt?.includes("Source:"))
       ? (aiPrompt?.replace("Source: ", "") || "")
-      : ""
+      : "")
   );
 
   // Use captured content as additional context for URL modes when resuming
   const [additionalContext, setAdditionalContext] = useState(
-    resumeInputContext ||
-      ((initialMode === "resume" || initialMode === "edit") && (resumeSourceType?.includes("url") || resumeSourceType?.includes("video")))
-      ? (location.state?.content as string || "")
-      : ""
+    location.state?.user_instructions !== undefined
+      ? (location.state.user_instructions as string || "")
+      : (aiPrompt || "")
   );
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(resumePostId || null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [lastSavedContent, setLastSavedContent] = useState<string>("");
   const [localHasUnsavedChanges, setLocalHasUnsavedChanges] = useState(false);
+
+  // Media State
+  const [mediaFiles, setMediaFiles] = useState<Array<{ url: string; type: 'image' | 'video'; file?: File }>>([]);
+  const [showGenerateImageDialog, setShowGenerateImageDialog] = useState(false);
 
   // Track last used generation params to disable regenerate if no changes
   const [lastGenerationParams, setLastGenerationParams] = useState<{
@@ -174,6 +185,16 @@ export default function Create() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [localHasUnsavedChanges, generatedContent]);
 
+  // Restore PDF filename from content if resuming
+  useEffect(() => {
+    if ((mode === "pdf") && capturedContent && !uploadedFileName) {
+      const match = capturedContent.match(/^Filename: (.*?)\n\n/);
+      if (match && match[1]) {
+        setUploadedFileName(match[1]);
+      }
+    }
+  }, [mode, capturedContent, uploadedFileName]);
+
   // Register save function with navigation guard
   useEffect(() => {
     setOnSave(async () => {
@@ -190,22 +211,23 @@ export default function Create() {
   // Auto-save draft when content is captured (but NOT when editing an existing post)
   const isEditingExisting = initialMode === "edit" || initialMode === "resume";
 
-  // For URL/Video modes, we save additionalContext as the content
-  const autoSaveContent = (mode === "url" || mode === "video" || mode === "pdf")
-    ? additionalContext
-    : capturedContent;
+  // For all modes (including Draft), capturedContent is the INPUT (source material).
+  // The 'content' field should be the GENERATED post (or empty initially), not the source.
+  const autoSaveContent = generatedContent;
 
-  const { hasAutoSaved, reset: resetAutoSave } = useAutoSaveDraft({
+  const { hasAutoSaved, reset: resetAutoSave, triggerSave } = useAutoSaveDraft({
     content: autoSaveContent,
     sourceUrl: urlInput || undefined,
     sourceType: mode,
     templateId: selectedTemplate?.id || null,
-    inputContext: additionalContext,
+    inputContext: capturedContent, // Correct mapping: Raw Content -> input_context
+    userInstructions: additionalContext,   // Correct mapping: User Notes -> user_instructions
     // Enable if there is ANY content (URL or text) that is substantial enough
     // Allow auto-save for updates to existing drafts (edit/resume) too
     enabled: (
       autoSaveContent.length >= 5 ||
-      (urlInput.length >= 5)
+      (urlInput.length >= 5) ||
+      (capturedContent.length >= 5) // Also check inputContext (capturedContent) presence
     ),
     currentDraftId: currentDraftId,
     onDraftCreated: (id) => setCurrentDraftId(id)
@@ -283,13 +305,38 @@ export default function Create() {
     }
 
     try {
+      // For PDF, collected text is already in capturedContent
+      // For URL/Video, we might have previewed content or we just send the URL
+
+      const functionData = {
+        prompt: fullPrompt, // Using fullPrompt as it's built in the existing logic
+        type: mode || 'draft',
+        tone: selectedTone, // Original uses selectedTone directly
+        sourceUrl: urlInput,
+        voiceTranscript: null as string | null,
+        inputContext: capturedContent || null,
+        userInstructions: additionalContext || null,
+        postId: currentDraftId,
+        templateId: selectedTemplate?.id || null,
+        mediaUrls: mediaFiles.map(m => m.url).filter(url => url.startsWith('http')), // Only pass real URLs
+        // Pass the previewed content if available to avoid re-extraction
+        originalContent: (mode === 'url' || mode === 'video' || mode === 'pdf') ? capturedContent : null
+      };
+
       const result = await generatePost.mutateAsync({
-        prompt: fullPrompt,
-        type: generationType,
-        tone: selectedTone,
-        sourceUrl: mode === "url" || mode === "video" ? urlInput : undefined,
-        voiceTranscript: mode === "voice" ? capturedContent : undefined,
+        prompt: functionData.prompt,
+        type: functionData.type as any, // Cast to any as type is more specific in functionData
+        tone: functionData.tone,
+        sourceUrl: functionData.sourceUrl,
+        voiceTranscript: functionData.voiceTranscript,
+        // New strict fields
+        postId: functionData.postId,
+        inputContext: functionData.inputContext,
+        userInstructions: functionData.userInstructions,
+        templateId: functionData.templateId,
+        mediaUrls: functionData.mediaUrls
       });
+
       setGeneratedContent(result);
 
       // Update last generation params
@@ -309,6 +356,9 @@ export default function Create() {
             content: result,
             is_ai_generated: true,
             status: "draft",
+            ai_prompt: fullPrompt, // Capture FULL snapshot on generation
+            input_context: capturedContent || null,
+            user_instructions: additionalContext || null
           });
           toast.success("Draft updated with generated content");
           setLastSavedContent(result);
@@ -323,7 +373,11 @@ export default function Create() {
             content: result,
             status: "draft",
             is_ai_generated: true,
-            ai_prompt: capturedContent || urlInput || undefined,
+            ai_prompt: fullPrompt, // Capture FULL snapshot
+            user_instructions: additionalContext || null,
+            input_context: capturedContent || null,
+            input_mode: mode || "draft",
+            source_url: urlInput || null,
           });
           setCurrentDraftId(newPost.id);
           setLastSavedContent(result);
@@ -340,6 +394,37 @@ export default function Create() {
     }
   };
 
+  // --- Content Preview Logic ---
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+  const handleFetchPreview = async () => {
+    if (!urlInput) {
+      toast.error("Please enter a URL first.");
+      return;
+    }
+
+    setIsPreviewLoading(true);
+    setCapturedContent("");
+
+    try {
+      const extractContentFn = httpsCallable(functions, 'extractContent');
+      const result: any = await extractContentFn({ url: urlInput, type: mode });
+
+      if (result.data.success) {
+        setCapturedContent(result.data.content);
+        // User requested immediate draft update when preview is generated.
+        triggerSave(result.data.content, urlInput);
+        toast.success("Content summary generated & saved to draft!");
+      }
+    } catch (error: any) {
+      console.error("Preview generation failed:", error);
+      setCapturedContent("⚠️ Could not generate summary. Please ensure the video is public and accessible.");
+      toast.error(error.message || "Failed to generate preview.");
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
   const handleSaveDraft = useCallback(async () => {
     if (!generatedContent.trim()) {
       toast.error("Generate content first!");
@@ -347,11 +432,52 @@ export default function Create() {
     }
 
     try {
+      // 1. Upload new media files to storage
+      // We need a draft ID to structure the path properly. If no draft ID, we create one first?
+      // Or we just use a temp path or user/uploads path.
+      // Let's create post first if needed, but that's a double write.
+      // Better: Upload to `users/{uid}/uploads/{timestamp}_{filename}` first.
+
+      const uploadedMediaUrls: string[] = [];
+      const updatedMediaFiles = [...mediaFiles];
+
+      if (mediaFiles.length > 0 && user?.uid) {
+        const toastId = toast.loading("Uploading media...");
+
+        await Promise.all(mediaFiles.map(async (media, index) => {
+          if (media.file) {
+            const storageRef = ref(storage, `users/${user.uid}/uploads/${Date.now()}_${media.file.name}`);
+            await uploadBytes(storageRef, media.file);
+            const downloadUrl = await getDownloadURL(storageRef);
+
+            uploadedMediaUrls.push(downloadUrl);
+            // Update local state to replace blob URL with real URL so we don't re-upload
+            updatedMediaFiles[index] = { ...media, url: downloadUrl, file: undefined };
+          } else {
+            uploadedMediaUrls.push(media.url);
+          }
+        }));
+
+        setMediaFiles(updatedMediaFiles);
+        toast.dismiss(toastId);
+      }
+
       if (currentDraftId) {
         // Update existing draft
         await updatePost.mutateAsync({
           id: currentDraftId,
           content: generatedContent,
+          media_urls: uploadedMediaUrls,
+          // Update source fields in case they changed
+          // Update source fields in case they changed
+          input_mode: mode,
+          input_context: capturedContent || null,
+          source_url: urlInput || null,
+          user_instructions: additionalContext || null,
+          // Do NOT update ai_prompt here. It is a snapshot of generation. 
+          // If the user regenerates, handleGeneratePost will update it.
+          // If they just edit the draft manually, the original snapshot remains valid history.
+          template_id: selectedTemplate?.id || null,
         });
         toast.success("Draft updated!");
       } else {
@@ -360,15 +486,24 @@ export default function Create() {
           content: generatedContent,
           status: "draft",
           is_ai_generated: true,
+          media_urls: uploadedMediaUrls,
+          // Save valid inputs
+          // Save valid inputs
+          input_mode: mode,
+          input_context: capturedContent || null,
+          source_url: urlInput || null,
+          user_instructions: additionalContext || null,
+          ai_prompt: null, // Manual draft save has no AI snapshot yet
+          template_id: selectedTemplate?.id || null,
         });
         setCurrentDraftId(newPost.id);
       }
       setLastSavedContent(generatedContent);
       setHasUnsavedChanges(false);
-    } catch (error) {
-      // Error handled in hook
+    } catch (error: any) {
+      toast.error("Failed to save: " + error.message);
     }
-  }, [generatedContent, currentDraftId, createPost, updatePost, setHasUnsavedChanges]);
+  }, [generatedContent, currentDraftId, createPost, updatePost, setHasUnsavedChanges, mediaFiles, user?.uid]);
 
   // Keep save ref updated
   useEffect(() => {
@@ -405,7 +540,7 @@ export default function Create() {
     toast.success("Copied! Open LinkedIn to paste your post.");
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.type !== "application/pdf") {
@@ -413,10 +548,47 @@ export default function Create() {
         return;
       }
       setUploadedFileName(file.name);
-      // For now, just show the file name as captured content
-      // In a full implementation, you'd extract text from the PDF
-      setCapturedContent(`PDF uploaded: ${file.name}\n\n[PDF content extraction would go here]`);
-      toast.success("PDF uploaded successfully");
+
+      try {
+        const toastId = toast.loading("Extracting text from PDF...");
+        const arrayBuffer = await file.arrayBuffer();
+
+        // Dynamically import pdfjs-dist
+        const pdfjsLib = await import('pdfjs-dist');
+
+        // workerSrc is critical. Using unpkg as a reliable fallback for vite environments 
+        // without complex worker configuration.
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+
+        let fullText = "";
+        const maxPages = 50; // Limit to avoid browser crash on huge docs
+
+        for (let i = 1; i <= Math.min(pdf.numPages, maxPages); i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            // @ts-ignore
+            .map((item: any) => item.str)
+            .join(" ");
+
+          fullText += `[Page ${i}]\n${pageText}\n\n`;
+        }
+
+        if (pdf.numPages > maxPages) {
+          fullText += `\n... (truncated after ${maxPages} pages)`;
+        }
+
+        setCapturedContent(`Filename: ${file.name}\n\n${fullText}`);
+        toast.dismiss(toastId);
+        toast.success(`Extracted text from ${pdf.numPages} pages!`);
+
+      } catch (error: any) {
+        console.error("PDF Extraction Error:", error);
+        toast.error("Failed to read PDF. It might be password protected or scanned.");
+      }
     }
   };
 
@@ -429,6 +601,92 @@ export default function Create() {
   // For studio view - show preview first
   const handleTemplatePreview = (template: Template) => {
     setShowTemplatePreview(template);
+  };
+
+  const handlePublishNow = async (visibility: "PUBLIC" | "CONNECTIONS" = "PUBLIC") => {
+    if (!generatedContent.trim()) {
+      toast.error("Generate content first!");
+      return;
+    }
+
+    if (!checkUsageLimit()) {
+      setShowSubscriptionModal(true);
+      return;
+    }
+
+    const toastId = toast.loading(`Publishing to LinkedIn (${visibility === "PUBLIC" ? "Public" : "Connections only"})...`);
+
+    try {
+      // 1. Ensure all media is uploaded (Reuse upload logic - simplified for now)
+      // Note: Ideally extract this upload logic to a helper
+      const uploadedMediaUrls: string[] = [];
+      const updatedMediaFiles = [...mediaFiles];
+
+      if (mediaFiles.length > 0 && user?.uid) {
+        // Show specific upload message if files need uploading
+        if (mediaFiles.some(m => m.file)) {
+          toast.message("Uploading media before publishing...", { id: toastId });
+        }
+
+        await Promise.all(mediaFiles.map(async (media, index) => {
+          if (media.file) {
+            const storageRef = ref(storage, `users/${user.uid}/uploads/${Date.now()}_${media.file.name}`);
+            await uploadBytes(storageRef, media.file);
+            const downloadUrl = await getDownloadURL(storageRef);
+
+            uploadedMediaUrls.push(downloadUrl);
+            updatedMediaFiles[index] = { ...media, url: downloadUrl, file: undefined };
+          } else {
+            uploadedMediaUrls.push(media.url);
+          }
+        }));
+
+        setMediaFiles(updatedMediaFiles);
+      }
+
+      const publishToLinkedIn = httpsCallable(functions, 'publishToLinkedIn');
+      // @ts-ignore
+      const result = await publishToLinkedIn({
+        content: generatedContent,
+        visibility,
+        mediaUrls: uploadedMediaUrls
+      });
+
+      toast.dismiss(toastId);
+      // @ts-ignore
+      if (result.data.success) {
+        toast.success("Successfully published to LinkedIn! 🎉");
+        // Update status to published if it was a draft
+        // @ts-ignore
+        const linkedinPostId = result.data.postId;
+
+        if (currentDraftId) {
+          await updatePost.mutateAsync({
+            id: currentDraftId,
+            status: "published",
+            published_at: new Date().toISOString(),
+            linkedin_post_id: linkedinPostId,
+            media_urls: uploadedMediaUrls
+          });
+        } else {
+          // Create and mark as published immediately
+          await createPost.mutateAsync({
+            content: generatedContent,
+            status: "published",
+            published_at: new Date().toISOString(),
+            is_ai_generated: true,
+            linkedin_post_id: linkedinPostId,
+            media_urls: uploadedMediaUrls
+          });
+        }
+        // Redirect to dashboard or show success state
+        navigate("/dashboard");
+      }
+    } catch (error: any) {
+      console.error("Publish Error:", error);
+      toast.dismiss(toastId);
+      toast.error("Failed to post: " + error.message);
+    }
   };
 
   const handleConfirmTemplateFromPreview = () => {
@@ -470,6 +728,24 @@ export default function Create() {
   const handleVoiceTranscriptUpdate = useCallback((text: string) => {
     setCapturedContent(text);
   }, []);
+
+  // Media Handlers
+  const handleAddMedia = (file: File) => {
+    const url = URL.createObjectURL(file);
+    const type = file.type.startsWith('video') ? 'video' : 'image';
+    setMediaFiles(prev => [...prev, { url, type, file }]);
+    setLocalHasUnsavedChanges(true);
+  };
+
+  const handleRemoveMedia = (index: number) => {
+    setMediaFiles(prev => prev.filter((_, i) => i !== index));
+    setLocalHasUnsavedChanges(true);
+  };
+
+  const handleGenerateImageSuccess = (url: string) => {
+    setMediaFiles(prev => [...prev, { url, type: 'image' }]);
+    setLocalHasUnsavedChanges(true);
+  };
 
   const userName = profile?.full_name || (user as any)?.user_metadata?.full_name || "Your Name";
   const userHeadline = profile?.headline || "Professional";
@@ -541,9 +817,13 @@ export default function Create() {
                         <Clock className="w-4 h-4 mr-2" />
                         Schedule
                       </DropdownMenuItem>
-                      <DropdownMenuItem disabled>
-                        <Wand2 className="w-4 h-4 mr-2" />
-                        Post Now (Soon)
+                      <DropdownMenuItem onClick={() => handlePublishNow("CONNECTIONS")}>
+                        <Eye className="w-4 h-4 mr-2" />
+                        Post (Connections Only)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handlePublishNow("PUBLIC")}>
+                        <Send className="w-4 h-4 mr-2" />
+                        Post Publicly
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -587,14 +867,14 @@ export default function Create() {
                       <LinkIcon className="w-5 h-5 text-primary" />
                       <span className="text-xs">Import Link</span>
                     </Button>
-                    <Button
+                    {/* <Button
                       variant="outline"
                       className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
                       onClick={() => setMode("video")}
                     >
                       <Video className="w-5 h-5 text-primary" />
                       <span className="text-xs">From Video</span>
-                    </Button>
+                    </Button> */}
                     <Button
                       variant="outline"
                       className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50"
@@ -622,6 +902,42 @@ export default function Create() {
             </>
           )}
 
+          {/* Draft Mode - Explicit UI */}
+          {mode === "draft" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Edit3 className="w-5 h-5 text-primary" />
+                  Draft Your Post
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="draft-content">Your Thoughts</Label>
+                  <Textarea
+                    id="draft-content"
+                    value={capturedContent}
+                    onChange={(e) => setCapturedContent(e.target.value)}
+                    placeholder="Start typing your rough ideas, key points, or brain dump here..."
+                    className="min-h-[200px]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="draft-instructions" className="text-sm text-muted-foreground">
+                    Instructions for AI (optional)
+                  </Label>
+                  <Textarea
+                    id="draft-instructions"
+                    value={additionalContext}
+                    onChange={(e) => setAdditionalContext(e.target.value)}
+                    placeholder="E.g., Polish this into a professional LinkedIn post, make it punchier, or fix the grammar..."
+                    className="min-h-[80px] resize-none"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Voice Capture Mode */}
           {mode === "voice" && (
             <Card className="border-primary/50">
@@ -644,11 +960,11 @@ export default function Create() {
                 {/* Additional context */}
                 <div>
                   <Label htmlFor="voice-context" className="text-sm text-muted-foreground">
-                    Additional context (optional)
+                    Instructions for AI (optional)
                   </Label>
                   <Textarea
                     id="voice-context"
-                    placeholder="Add any additional notes or context..."
+                    placeholder="E.g., Turn this into a LinkedIn post, keep the casual tone, or focus on the second idea mentioned..."
                     value={additionalContext}
                     onChange={(e) => setAdditionalContext(e.target.value)}
                     className="mt-2 min-h-[80px] resize-none"
@@ -658,30 +974,7 @@ export default function Create() {
             </Card>
           )}
 
-          {/* Draft Mode */}
-          {mode === "draft" && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Edit3 className="w-5 h-5 text-primary" />
-                  Draft Your Post
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  placeholder="Write your thoughts, ideas, or bullet points here...
 
-Example:
-• Just closed a big deal
-• Learned that persistence pays off
-• Want to share lessons about B2B sales"
-                  value={capturedContent}
-                  onChange={(e) => setCapturedContent(e.target.value)}
-                  className="min-h-[200px] resize-none"
-                />
-              </CardContent>
-            </Card>
-          )}
 
           {/* URL Mode */}
           {mode === "url" && (
@@ -693,32 +986,30 @@ Example:
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="url-input">Article URL</Label>
-                  <Input
-                    id="url-input"
-                    type="url"
-                    placeholder="https://..."
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    className="mt-2"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    We'll summarize the content and remix it in your voice
-                  </p>
-                </div>
+                <Card className="p-6 border-2 border-dashed border-border/50 bg-secondary/20">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="url-input">Paste article URL</Label>
+                      <Input
+                        id="url-input"
+                        placeholder="https://example.com/article"
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                      />
+                    </div>
 
-                {/* Additional context textarea */}
-                <div>
-                  <Label htmlFor="url-context">Additional context (optional)</Label>
-                  <Textarea
-                    id="url-context"
-                    placeholder="Add your perspective or specific points you want to highlight..."
-                    value={additionalContext}
-                    onChange={(e) => setAdditionalContext(e.target.value)}
-                    className="mt-2 min-h-[100px] resize-none"
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="url-context">Instructions for AI (optional)</Label>
+                      <Textarea
+                        id="url-context"
+                        placeholder="E.g., Focus on the second section, make it professional, or summarize the key takeaways..."
+                        className="min-h-[100px]"
+                        value={additionalContext}
+                        onChange={(e) => setAdditionalContext(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </Card>
               </CardContent>
             </Card>
           )}
@@ -733,32 +1024,55 @@ Example:
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="video-url-input">YouTube URL</Label>
-                  <Input
-                    id="video-url-input"
-                    type="url"
-                    placeholder="https://youtube.com/watch?v=..."
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    className="mt-2"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    We'll extract key insights and create a post
-                  </p>
-                </div>
+                <Card className="p-6 border-2 border-dashed border-border/50 bg-secondary/20">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="video-input">YouTube URL</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="video-input"
+                          placeholder="https://youtube.com/watch?v=..."
+                          value={urlInput}
+                          onChange={(e) => setUrlInput(e.target.value)}
+                        />
+                        <Button
+                          variant="outline"
+                          onClick={handleFetchPreview}
+                          disabled={!urlInput || isPreviewLoading}
+                        >
+                          {isPreviewLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "Fetch Preview"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
 
-                {/* Additional context textarea */}
-                <div>
-                  <Label htmlFor="video-context">Additional context (optional)</Label>
-                  <Textarea
-                    id="video-context"
-                    placeholder="Add your perspective or specific points you want to highlight..."
-                    value={additionalContext}
-                    onChange={(e) => setAdditionalContext(e.target.value)}
-                    className="mt-2 min-h-[100px] resize-none"
-                  />
-                </div>
+                    {/* Extracted Content Preview for Video */}
+                    {capturedContent && (
+                      <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                        <Label className="text-sm text-muted-foreground">Transcript Preview (Editable)</Label>
+                        <Textarea
+                          className="min-h-[200px] font-mono text-xs"
+                          value={capturedContent}
+                          onChange={(e) => setCapturedContent(e.target.value)}
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="video-context">Instructions for AI (optional)</Label>
+                      <Textarea
+                        id="video-context"
+                        placeholder="E.g., Focus on the interview segment at 5:00, extract the main tutorials, or summarize the key arguments..."
+                        className="min-h-[100px]"
+                        value={additionalContext}
+                        onChange={(e) => setAdditionalContext(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </Card>
               </CardContent>
             </Card>
           )}
@@ -811,12 +1125,22 @@ Example:
                   </Button>
                 )}
 
+                {/* Extracted Content Preview */}
+                {uploadedFileName && capturedContent && (
+                  <div className="mt-4 space-y-2">
+                    <Label className="text-sm text-muted-foreground">Extracted Content Preview</Label>
+                    <div className="bg-secondary/50 rounded-lg p-4 max-h-[200px] overflow-y-auto border border-border">
+                      <p className="text-xs font-mono whitespace-pre-wrap text-foreground">{capturedContent}</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Additional context textarea */}
                 <div>
-                  <Label htmlFor="pdf-context">Additional context (optional)</Label>
+                  <Label htmlFor="pdf-context">Instructions for AI (optional)</Label>
                   <Textarea
                     id="pdf-context"
-                    placeholder="Add your perspective or specific points you want to highlight from the document..."
+                    placeholder="E.g., Summarize the findings on page 3, focus on the financial results, or rewrite the conclusion in a punchy style..."
                     value={additionalContext}
                     onChange={(e) => setAdditionalContext(e.target.value)}
                     className="mt-2 min-h-[100px] resize-none"
@@ -858,7 +1182,7 @@ Example:
                     <LayoutTemplate className="w-4 h-4 text-primary" />
                     Selected Template
                   </span>
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedTemplate(null)}>
+                  <Button variant="ghost" size="sm" onClick={() => setShowTemplateLibrary(true)}>
                     Change
                   </Button>
                 </CardTitle>
@@ -934,7 +1258,7 @@ Example:
           {/* Editor Section - Visible after generation */}
           {hasGeneratedContent && (
             <div className="mt-8 pt-8 border-t border-border animate-fade-in text-left">
-              <h2 className="text-xl font-semibold mb-6">Your Post</h2>
+              <h2 className="text-xl font-semibold mb-6 text-foreground">Your Post</h2>
 
               {/* Mobile Tabs */}
               <div className="md:hidden">
@@ -953,6 +1277,10 @@ Example:
                       onGenerateAI={() => setShowAIDialog(true)}
                       isGenerating={isGenerating}
                       placeholder="Refine your post..."
+                      media={mediaFiles}
+                      onAddMedia={handleAddMedia}
+                      onRemoveMedia={handleRemoveMedia}
+                      onGenerateImage={() => setShowGenerateImageDialog(true)}
                     />
                   </TabsContent>
                   <TabsContent value="preview">
@@ -975,6 +1303,10 @@ Example:
                     onGenerateAI={() => setShowAIDialog(true)}
                     isGenerating={isGenerating}
                     placeholder="Refine your post..."
+                    media={mediaFiles}
+                    onAddMedia={handleAddMedia}
+                    onRemoveMedia={handleRemoveMedia}
+                    onGenerateImage={() => setShowGenerateImageDialog(true)}
                   />
                 </div>
                 <div>
@@ -1001,6 +1333,13 @@ Example:
           onToneChange={setSelectedTone}
           onRegenerate={handleRegenerateAI}
           isGenerating={isGenerating}
+        />
+
+        <GenerateImageDialog
+          open={showGenerateImageDialog}
+          onOpenChange={setShowGenerateImageDialog}
+          postContent={generatedContent}
+          onGenerate={handleGenerateImageSuccess}
         />
 
         {/* Floating Voice Bar - only show in voice mode */}

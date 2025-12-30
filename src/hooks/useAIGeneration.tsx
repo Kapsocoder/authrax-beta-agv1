@@ -6,10 +6,16 @@ import { toast } from "sonner";
 
 interface GeneratePostParams {
   prompt: string;
-  type: "topic" | "url" | "voice" | "repurpose" | "notes" | "freeform";
+  type: "topic" | "url" | "voice" | "repurpose" | "notes" | "freeform" | "draft" | "video" | "pdf";
   tone?: string;
   sourceUrl?: string;
   voiceTranscript?: string;
+  // New fields for strict webhook payload
+  postId?: string | null;
+  inputContext?: string | null;
+  userInstructions?: string | null;
+  mediaUrls?: string[];
+  templateId?: string | null;
 }
 
 interface RegeneratePostParams {
@@ -17,38 +23,31 @@ interface RegeneratePostParams {
   changeRequest: string;
   tone: string;
   templatePrompt?: string;
+  postId?: string | null;
 }
 
 export function useAIGeneration() {
   const { user } = useAuth();
 
   const generatePost = useMutation({
-    mutationFn: async ({ prompt, type, tone, sourceUrl, voiceTranscript }: GeneratePostParams) => {
-      if (!user?.uid) {
-        throw new Error("Not authenticated");
-      }
-
-      const token = await user.getIdToken();
-
-      // Using onRequest function now
-      const response = await fetch("https://us-central1-authrax-beta-lv1.cloudfunctions.net/generatePost", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          prompt, type, tone: tone || "professional", userId: user.uid, sourceUrl, voiceTranscript
-        })
+    mutationFn: async (params: GeneratePostParams) => {
+      // Note: httpsCallable handles auth tokens automatically
+      const generatePostFn = httpsCallable(functions, 'generatePost');
+      const result: any = await generatePostFn({
+        prompt: params.prompt,
+        type: params.type,
+        tone: params.tone || "professional",
+        sourceUrl: params.sourceUrl,
+        voiceTranscript: params.voiceTranscript,
+        // Pass strict payload fields
+        postId: params.postId,
+        inputContext: params.inputContext,
+        userInstructions: params.userInstructions,
+        mediaUrls: params.mediaUrls,
+        templateId: params.templateId
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to generate post");
-      }
-
-      const data = await response.json();
-      return data.content as string;
+      return result.data.content as string;
     },
     onError: (error) => {
       toast.error("Failed to generate content: " + error.message);
@@ -56,41 +55,19 @@ export function useAIGeneration() {
   });
 
   const regeneratePost = useMutation({
-    mutationFn: async ({ editorContent, changeRequest, tone, templatePrompt }: RegeneratePostParams) => {
-      if (!user?.uid) {
-        throw new Error("Not authenticated");
-      }
-
-      const token = await user.getIdToken();
-
-      const response = await fetch("https://us-central1-authrax-beta-lv1.cloudfunctions.net/generatePost", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          // The backend expects data inside 'data' or directly in body, but let's stick to what we see in generatePost which uses flat body for some fields? 
-          // Wait, generatePost in useAIGeneration.tsx sends { prompt, type ... } directly in body.
-          // The backend index.ts says: `const { ... } = req.body.data || req.body;`
-          // So sending directly in body is fine and safer given we are using fetch.
-          // Let's pass the params expected by backend logic for regeneration: 
-          // editorContent, changeRequest, templatePrompt, userId, tone.
-          userId: user.uid,
-          tone,
-          editorContent,
-          changeRequest,
-          templatePrompt,
-        })
+    mutationFn: async ({ editorContent, changeRequest, tone, templatePrompt, postId }: RegeneratePostParams) => {
+      const generatePostFn = httpsCallable(functions, 'generatePost');
+      const result: any = await generatePostFn({
+        editorContent,
+        changeRequest,
+        tone,
+        templatePrompt,
+        postId,
+        // Since we are using the same function for both initial and regen, 
+        // passing these specific params triggers the regen logic in backend.
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to regenerate post");
-      }
-
-      const data = await response.json();
-      return data.content as string;
+      return result.data.content as string;
     },
     onError: (error) => {
       toast.error("Failed to regenerate content: " + error.message);
