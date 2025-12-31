@@ -26,7 +26,6 @@ import { PostEditor } from "@/components/post/PostEditor";
 import { LinkedInPreview } from "@/components/post/LinkedInPreview";
 import { ToneSelector, ToneOption } from "@/components/studio/ToneSelector";
 import { TrendingTemplates } from "@/components/templates/TrendingTemplates";
-import { AIAssistDialog } from "@/components/studio/AIAssistDialog";
 import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
 import { TemplateLibraryDialog } from "@/components/templates/TemplateLibraryDialog";
 import { TemplateCard } from "@/components/templates/TemplateCard";
@@ -35,7 +34,13 @@ import { GenerateImageDialog } from "@/components/studio/GenerateImageDialog";
 import { Template, useTemplate, useTemplates } from "@/hooks/useTemplates";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { usePosts } from "@/hooks/usePosts";
+import {
+  usePosts,
+  type ScheduledPostV2,
+  type LinkedInShareConfig,
+  type CreatePostData,
+  type PostMedia
+} from "@/hooks/usePosts";
 import { useAIGeneration } from "@/hooks/useAIGeneration";
 import { useAutoSaveDraft } from "@/hooks/useAutoSaveDraft";
 import { useNavigationGuard } from "@/contexts/NavigationGuardContext";
@@ -93,12 +98,23 @@ export default function Create() {
   // Handle resume mode - convert sourceType back to mode
   const getInitialModeFromResume = (): StudioMode => {
     // Both resume and edit modes should restore the input mode
-    if ((initialMode === "resume" || initialMode === "edit") && resumeSourceType) {
-      if (resumeSourceType === "voice" || resumeSourceType.includes("voice")) return "voice";
-      if (resumeSourceType === "url" || resumeSourceType.includes("url") || resumeSourceType.includes("Source:")) return "url";
-      if (resumeSourceType === "video" || resumeSourceType.includes("video")) return "video";
-      if (resumeSourceType === "pdf" || resumeSourceType.includes("pdf")) return "pdf";
-      if (resumeSourceType === "draft") return "draft";
+    if (initialMode === "resume" || initialMode === "edit") {
+      // 1. Try explicit Source Type
+      if (resumeSourceType) {
+        const type = resumeSourceType.toLowerCase();
+        if (type === "voice" || type.includes("voice")) return "voice";
+        if (type === "url" || type.includes("url") || type.includes("link") || type.includes("source:")) return "url";
+        if (type === "video" || type.includes("video") || type.includes("youtube")) return "video";
+        if (type === "pdf" || type.includes("pdf")) return "pdf";
+        if (type === "draft") return "draft";
+      }
+      // 2. Fallback: Infer from Source URL presence
+      if (resumeSourceUrl) {
+        if (resumeSourceUrl.includes("youtube.com") || resumeSourceUrl.includes("youtu.be")) return "video";
+        return "url";
+      }
+      // 3. Fallback: Infer from Context/Content
+      if (resumeInputContext && resumeInputContext.includes("Filename:")) return "pdf";
     }
     // template mode should go to studio (null mode) but with template pre-selected
     return initialMode === "edit" || initialMode === "resume" || initialMode === "template" ? null : (initialMode as StudioMode);
@@ -123,14 +139,16 @@ export default function Create() {
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
   const [showTemplatePreview, setShowTemplatePreview] = useState<Template | null>(null);
   const [activeTab, setActiveTab] = useState("write");
-  const [showAIDialog, setShowAIDialog] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [urlInput, setUrlInput] = useState(
     resumeSourceUrl ??
-    (((initialMode === "resume" || initialMode === "edit") && aiPrompt?.includes("Source:"))
-      ? (aiPrompt?.replace("Source: ", "") || "")
+    resumeSourceUrl ??
+    (((initialMode === "resume" || initialMode === "edit") && (aiPrompt?.toLowerCase().includes("source:") || aiPrompt?.toLowerCase().includes("url:")))
+      ? (aiPrompt?.match(/(?:Source:|URL:)\s*(https?:\/\/[^\s]+)/i)?.[1] || "")
       : "")
   );
+
+
 
   // Use captured content as additional context for URL modes when resuming
   const [additionalContext, setAdditionalContext] = useState(
@@ -140,11 +158,57 @@ export default function Create() {
   );
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(resumePostId || null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+
+  // Recovery Effect: If mode is lost, try to recover based on available data
+  useEffect(() => {
+    if (!mode) {
+      if (urlInput) {
+        if (urlInput.includes("youtube.com") || urlInput.includes("youtu.be")) {
+          setMode("video");
+        } else if (urlInput.includes("http") || urlInput.includes("www")) {
+          setMode("url");
+        }
+      } else if (uploadedFileName || capturedContent?.includes("Filename:")) {
+        setMode("pdf");
+      }
+    }
+  }, [mode, urlInput, uploadedFileName, capturedContent]);
   const [lastSavedContent, setLastSavedContent] = useState<string>("");
   const [localHasUnsavedChanges, setLocalHasUnsavedChanges] = useState(false);
 
   // Media State
-  const [mediaFiles, setMediaFiles] = useState<Array<{ url: string; type: 'image' | 'video'; file?: File }>>([]);
+  // Media State
+  const [mediaItems, setMediaItems] = useState<PostMedia[]>(() => {
+    if (initialMode === "resume" || initialMode === "edit") {
+      return location.state?.media_items || [];
+    }
+    return [];
+  });
+
+  const [mediaFiles, setMediaFiles] = useState<Array<{ url: string; type: 'image' | 'video'; file?: File }>>(() => {
+    if (initialMode === "resume" || initialMode === "edit") {
+      const items = location.state?.media_items as PostMedia[] || [];
+      const legacyUrls = location.state?.media_urls as string[] || [];
+
+      // Prefer media_items if available
+      if (items.length > 0) {
+        return items.map(item => ({
+          url: item.url,
+          type: item.type,
+          // No file object for resumed items
+        }));
+      }
+
+      // Fallback to legacy media_urls
+      if (legacyUrls.length > 0) {
+        return legacyUrls.map(url => ({
+          url,
+          type: 'image', // Assume image for legacy
+        }));
+      }
+    }
+    return [];
+  });
   const [showGenerateImageDialog, setShowGenerateImageDialog] = useState(false);
 
   // Track last used generation params to disable regenerate if no changes
@@ -357,7 +421,9 @@ export default function Create() {
             is_ai_generated: true,
             status: "draft",
             ai_prompt: fullPrompt, // Capture FULL snapshot on generation
-            input_context: capturedContent || null,
+            // Only update input_context if we have new content OR if in direct input mode (draft/voice)
+            // This prevents wiping scraped content in URL/Video mode if re-generating without re-previewing
+            ...((capturedContent || mode === 'draft' || mode === 'voice') ? { input_context: capturedContent || null } : {}),
             user_instructions: additionalContext || null
           });
           toast.success("Draft updated with generated content");
@@ -431,36 +497,76 @@ export default function Create() {
       return;
     }
 
+    let toastId: string | number | undefined;
+
     try {
       // 1. Upload new media files to storage
-      // We need a draft ID to structure the path properly. If no draft ID, we create one first?
-      // Or we just use a temp path or user/uploads path.
-      // Let's create post first if needed, but that's a double write.
-      // Better: Upload to `users/{uid}/uploads/{timestamp}_{filename}` first.
+      toastId = toast.loading("Uploading media...");
 
       const uploadedMediaUrls: string[] = [];
       const updatedMediaFiles = [...mediaFiles];
+      // Create a map to update mediaItems by index or ID if needed. 
+      // Current logic assumes mediaFiles and mediaItems are in sync by index. 
+      // Wait, mediaItems might have different length or order? 
+      // Actually mediaFiles and mediaItems are managed in parallel.
+      // Better approach: Re-construct mediaItems from the upload results.
 
-      if (mediaFiles.length > 0 && user?.uid) {
-        const toastId = toast.loading("Uploading media...");
+      const processUploads = async () => {
+        // We only need to upload if there is a 'file' object.
+        // If it's a URL (from AI), we just keep it. 
+        // BUT, if it is a blob URL from AI (if we change AI logic), we would need to upload.
+        // Current AI logic returns a remote URL from 'generateImage' cloud function?
+        // Wait, 'generateImage' returns { imageUrl: ... }. Is it signed URL or public? 
+        // It saves to 'generated_images/...'. It's a persistent URL.
+        // So we only need to upload user files.
 
         await Promise.all(mediaFiles.map(async (media, index) => {
+          let finalUrl = media.url;
+
           if (media.file) {
-            const storageRef = ref(storage, `users/${user.uid}/uploads/${Date.now()}_${media.file.name}`);
+            // It's a user upload that hasn't been sent to storage yet
+            const storageRef = ref(storage, `users/${user?.uid}/uploads/${Date.now()}_${media.file.name}`);
             await uploadBytes(storageRef, media.file);
-            const downloadUrl = await getDownloadURL(storageRef);
+            finalUrl = await getDownloadURL(storageRef);
 
-            uploadedMediaUrls.push(downloadUrl);
-            // Update local state to replace blob URL with real URL so we don't re-upload
-            updatedMediaFiles[index] = { ...media, url: downloadUrl, file: undefined };
-          } else {
-            uploadedMediaUrls.push(media.url);
+            // Update local state so we don't re-upload next time
+            updatedMediaFiles[index] = { ...media, url: finalUrl, file: undefined };
           }
-        }));
 
+          uploadedMediaUrls.push(finalUrl);
+        }));
+      };
+
+      if (mediaFiles.length > 0 && user?.uid) {
+        await processUploads();
         setMediaFiles(updatedMediaFiles);
-        toast.dismiss(toastId);
       }
+
+      toast.dismiss(toastId);
+
+      // 2. Prepare mediaItems for Firestore (Sanitize undefined)
+      // We must sync mediaItems URLs with the uploaded URLs.
+      // mediaItems[i] corresponds to mediaFiles[i].
+      const sanitizedMediaItems = mediaItems.map((item, index) => {
+        // Get the final URL from the upload process
+        // Note: This relies on mediaFiles and mediaItems being perfectly indexed.
+        // They are added/removed together, so this should hold.
+        const finalUrl = updatedMediaFiles[index]?.url || item.url;
+
+        return {
+          ...item,
+          url: finalUrl,
+          // Firestore doesn't accept undefined. Convert to null.
+          ai_metadata: item.ai_metadata ? {
+            ...item.ai_metadata,
+            custom_user_prompt: item.ai_metadata.custom_user_prompt || null
+          } : null,
+          camera_metadata: item.camera_metadata ? {
+            original_filename: item.camera_metadata.original_filename || null
+          } : null
+        };
+      });
+
 
       if (currentDraftId) {
         // Update existing draft
@@ -468,15 +574,12 @@ export default function Create() {
           id: currentDraftId,
           content: generatedContent,
           media_urls: uploadedMediaUrls,
-          // Update source fields in case they changed
+          media_items: sanitizedMediaItems,
           // Update source fields in case they changed
           input_mode: mode,
           input_context: capturedContent || null,
           source_url: urlInput || null,
           user_instructions: additionalContext || null,
-          // Do NOT update ai_prompt here. It is a snapshot of generation. 
-          // If the user regenerates, handleGeneratePost will update it.
-          // If they just edit the draft manually, the original snapshot remains valid history.
           template_id: selectedTemplate?.id || null,
         });
         toast.success("Draft updated!");
@@ -487,13 +590,13 @@ export default function Create() {
           status: "draft",
           is_ai_generated: true,
           media_urls: uploadedMediaUrls,
-          // Save valid inputs
+          media_items: sanitizedMediaItems,
           // Save valid inputs
           input_mode: mode,
           input_context: capturedContent || null,
           source_url: urlInput || null,
           user_instructions: additionalContext || null,
-          ai_prompt: null, // Manual draft save has no AI snapshot yet
+          ai_prompt: null,
           template_id: selectedTemplate?.id || null,
         });
         setCurrentDraftId(newPost.id);
@@ -501,9 +604,12 @@ export default function Create() {
       setLastSavedContent(generatedContent);
       setHasUnsavedChanges(false);
     } catch (error: any) {
+      console.error("Save Draft Error:", error);
       toast.error("Failed to save: " + error.message);
+    } finally {
+      if (toastId) toast.dismiss(toastId);
     }
-  }, [generatedContent, currentDraftId, createPost, updatePost, setHasUnsavedChanges, mediaFiles, user?.uid]);
+  }, [generatedContent, currentDraftId, createPost, updatePost, setHasUnsavedChanges, mediaFiles, mediaItems, user?.uid]);
 
   // Keep save ref updated
   useEffect(() => {
@@ -696,33 +802,7 @@ export default function Create() {
     }
   };
 
-  const handleRegenerateAI = async (params: {
-    changeRequest: string;
-    template: Template | null;
-    tone: string;
-  }) => {
-    try {
-      // Build template prompt if template is selected
-      let templatePrompt: string | undefined;
-      if (params.template) {
-        templatePrompt = `Template: ${params.template.name}\nStructure: ${params.template.structure}\nDescription: ${params.template.description}\nPrompt: ${params.template.prompt}`;
-      }
 
-      const result = await regeneratePost.mutateAsync({
-        editorContent: generatedContent,
-        changeRequest: params.changeRequest,
-        tone: params.tone,
-        templatePrompt,
-      });
-
-      setGeneratedContent(result);
-      setHasUnsavedChanges(true);
-      setShowAIDialog(false);
-      toast.success("Content regenerated!");
-    } catch (error) {
-      // Error handled in hook
-    }
-  };
 
   // Handle voice transcript updates
   const handleVoiceTranscriptUpdate = useCallback((text: string) => {
@@ -730,20 +810,54 @@ export default function Create() {
   }, []);
 
   // Media Handlers
-  const handleAddMedia = (file: File) => {
+  /* Media Handlers */
+  const handleMediaAdd = (file: File, source: "upload" | "camera" = "upload") => {
+    // Create local object URL for preview
     const url = URL.createObjectURL(file);
-    const type = file.type.startsWith('video') ? 'video' : 'image';
+    const type = file.type.startsWith('video/') ? 'video' : 'image';
+
+    // Add to backward compatible state
     setMediaFiles(prev => [...prev, { url, type, file }]);
+
+    // Create new PostMedia object
+    const newItem: PostMedia = {
+      id: crypto.randomUUID(),
+      url, // Temporary URL, will be replaced by upload URL on save? Or we upload now?
+      // Note: Current logic uploads on save/publish. 
+      // For now we store object URL and file, and handle upload later.
+      type,
+      source,
+      camera_metadata: source === "camera" ? {
+        original_filename: file.name
+      } : undefined,
+      created_at: new Date().toISOString()
+    };
+
+    setMediaItems(prev => [...prev, newItem]);
     setLocalHasUnsavedChanges(true);
   };
 
   const handleRemoveMedia = (index: number) => {
     setMediaFiles(prev => prev.filter((_, i) => i !== index));
+    setMediaItems(prev => prev.filter((_, i) => i !== index));
     setLocalHasUnsavedChanges(true);
   };
 
-  const handleGenerateImageSuccess = (url: string) => {
+  const handleAIImageGenerated = (url: string, metadata?: any) => {
+    // Add to backward compatible state
     setMediaFiles(prev => [...prev, { url, type: 'image' }]);
+
+    // Create new PostMedia object
+    const newItem: PostMedia = {
+      id: crypto.randomUUID(),
+      url,
+      type: 'image',
+      source: 'ai_generate',
+      ai_metadata: metadata,
+      created_at: new Date().toISOString()
+    };
+
+    setMediaItems(prev => [...prev, newItem]);
     setLocalHasUnsavedChanges(true);
   };
 
@@ -1274,11 +1388,10 @@ export default function Create() {
                     <PostEditor
                       value={generatedContent}
                       onChange={setGeneratedContent}
-                      onGenerateAI={() => setShowAIDialog(true)}
                       isGenerating={isGenerating}
                       placeholder="Refine your post..."
                       media={mediaFiles}
-                      onAddMedia={handleAddMedia}
+                      onAddMedia={handleMediaAdd}
                       onRemoveMedia={handleRemoveMedia}
                       onGenerateImage={() => setShowGenerateImageDialog(true)}
                     />
@@ -1300,11 +1413,10 @@ export default function Create() {
                   <PostEditor
                     value={generatedContent}
                     onChange={setGeneratedContent}
-                    onGenerateAI={() => setShowAIDialog(true)}
                     isGenerating={isGenerating}
                     placeholder="Refine your post..."
                     media={mediaFiles}
-                    onAddMedia={handleAddMedia}
+                    onAddMedia={handleMediaAdd}
                     onRemoveMedia={handleRemoveMedia}
                     onGenerateImage={() => setShowGenerateImageDialog(true)}
                   />
@@ -1325,21 +1437,13 @@ export default function Create() {
           )}
         </div>
 
-        {/* AI Assist Dialog - ensure it's here since we removed the other instance */}
-        <AIAssistDialog
-          open={showAIDialog}
-          onOpenChange={setShowAIDialog}
-          selectedTone={selectedTone}
-          onToneChange={setSelectedTone}
-          onRegenerate={handleRegenerateAI}
-          isGenerating={isGenerating}
-        />
+
 
         <GenerateImageDialog
           open={showGenerateImageDialog}
           onOpenChange={setShowGenerateImageDialog}
           postContent={generatedContent}
-          onGenerate={handleGenerateImageSuccess}
+          onGenerate={handleAIImageGenerated}
         />
 
         {/* Floating Voice Bar - only show in voice mode */}

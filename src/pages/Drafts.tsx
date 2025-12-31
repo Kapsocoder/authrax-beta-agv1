@@ -44,7 +44,10 @@ export default function Drafts() {
         sourceType: post.input_mode || post.ai_prompt, // Fallback for legacy
         inputContext: post.input_context,
         sourceUrl: post.source_url,
-        user_instructions: post.user_instructions // Pass instructions for correct restoration
+        user_instructions: post.user_instructions, // Pass instructions for correct restoration
+        // Pass media data
+        media_items: post.media_items,
+        media_urls: post.media_urls
       }
     });
   };

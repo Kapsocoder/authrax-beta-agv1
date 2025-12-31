@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Sparkles, Loader2, Image as ImageIcon, Wand2, Monitor, Smartphone, Square } from "lucide-react";
+import {
+    Sparkles, Loader2, Image as ImageIcon, Wand2, Monitor, Smartphone, Square,
+    Briefcase, Lightbulb, PenTool, Cpu, Camera, Pencil, Palette
+} from "lucide-react";
 import { functions } from "@/firebaseConfig";
 import { httpsCallable } from "firebase/functions";
 import { toast } from "sonner";
@@ -14,8 +17,18 @@ interface GenerateImageDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     postContent?: string;
-    onGenerate: (url: string) => void;
+    onGenerate: (url: string, metadata?: any) => void;
 }
+
+const imageStyles = [
+    { id: "professional", label: "Professional", icon: Briefcase },
+    { id: "concept", label: "Concept / Metaphor", icon: Lightbulb },
+    { id: "graphic", label: "Clean Graphic", icon: PenTool },
+    { id: "tech", label: "Tech / Innovation", icon: Cpu },
+    { id: "authentic", label: "Authentic Story", icon: Camera },
+    { id: "handrawn", label: "Hand-Drawn", icon: Pencil },
+    { id: "custom", label: "Custom", icon: Palette },
+];
 
 export function GenerateImageDialog({
     open,
@@ -25,6 +38,7 @@ export function GenerateImageDialog({
 }: GenerateImageDialogProps) {
     const [prompt, setPrompt] = useState("");
     const [aspectRatio, setAspectRatio] = useState<"1:1" | "16:9" | "9:16">("1:1");
+    const [selectedStyle, setSelectedStyle] = useState("professional");
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSuggesting, setIsSuggesting] = useState(false);
 
@@ -56,20 +70,44 @@ export function GenerateImageDialog({
     }, [open, postContent]);
 
     const handleGenerate = async () => {
-        if (!prompt.trim()) {
+        // Validate inputs
+        if (selectedStyle === "custom" && !prompt.trim()) {
             toast.error("Please enter a prompt");
+            return;
+        }
+
+        if (selectedStyle !== "custom" && !postContent) {
+            toast.error("Post content is required for this style");
             return;
         }
 
         setIsGenerating(true);
         try {
+            console.log("Generating with style:", selectedStyle);
+
             const generateImageFn = httpsCallable(functions, 'generateImage');
-            const result = await generateImageFn({ prompt, aspectRatio });
+
+            let payload: any = { aspectRatio };
+
+            if (selectedStyle === "custom") {
+                payload.prompt = prompt;
+            } else {
+                payload.style = selectedStyle;
+                payload.postContent = postContent;
+            }
+
+            const result = await generateImageFn(payload);
 
             // @ts-ignore
             if (result.data?.imageUrl) {
                 // @ts-ignore
-                onGenerate(result.data.imageUrl);
+                onGenerate(result.data.imageUrl, {
+                    style: selectedStyle,
+                    // @ts-ignore
+                    prompt: result.data.generatedPrompt || (selectedStyle === "custom" ? prompt : "Auto-generated"),
+                    custom_user_prompt: selectedStyle === "custom" ? prompt : undefined,
+                    aspect_ratio: aspectRatio
+                });
                 onOpenChange(false);
                 toast.success("Image generated successfully!");
             } else {
@@ -97,24 +135,48 @@ export function GenerateImageDialog({
                 </DialogHeader>
 
                 <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <Label>Image Prompt</Label>
-                            {isSuggesting && (
-                                <span className="text-xs text-muted-foreground flex items-center gap-1 animate-pulse">
-                                    <Wand2 className="w-3 h-3" />
-                                    Creating best prompt...
-                                </span>
-                            )}
+                    <div className="space-y-3">
+                        <Label>Visual Style</Label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[160px] overflow-y-auto pr-1">
+                            {imageStyles.map((style) => (
+                                <button
+                                    key={style.id}
+                                    onClick={() => setSelectedStyle(style.id)}
+                                    className={cn(
+                                        "flex flex-col items-center justify-center p-3 rounded-lg border text-center transition-all",
+                                        selectedStyle === style.id
+                                            ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
+                                            : "border-border hover:bg-muted bg-card hover:border-primary/50"
+                                    )}
+                                >
+                                    <style.icon className="w-5 h-5 mb-2" />
+                                    <span className="text-[10px] font-medium leading-tight">{style.label}</span>
+                                </button>
+                            ))}
                         </div>
-                        <Textarea
-                            placeholder="Describe the image you want to generate..."
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
-                            className={cn("min-h-[120px] resize-none", isSuggesting && "opacity-50")}
-                            disabled={isSuggesting || isGenerating}
-                        />
                     </div>
+
+                    {selectedStyle === "custom" && (
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <Label>Image Prompt</Label>
+                                {isSuggesting && (
+                                    <span className="text-xs text-muted-foreground flex items-center gap-1 animate-pulse">
+                                        <Wand2 className="w-3 h-3" />
+                                        Creating best prompt...
+                                    </span>
+                                )}
+                            </div>
+                            <Textarea
+                                placeholder="Describe the image you want to generate..."
+                                value={prompt}
+                                onChange={(e) => setPrompt(e.target.value)}
+                                className={cn("min-h-[100px] resize-none", isSuggesting && "opacity-50")}
+                                disabled={isSuggesting || isGenerating}
+                            />
+                        </div>
+                    )}
+
 
                     <div className="space-y-2">
                         <Label>Aspect Ratio</Label>
@@ -147,7 +209,7 @@ export function GenerateImageDialog({
                     <Button
                         variant="gradient"
                         onClick={handleGenerate}
-                        disabled={isGenerating || isSuggesting || !prompt.trim()}
+                        disabled={isGenerating || isSuggesting || (selectedStyle === "custom" && !prompt.trim())}
                         className="gap-2"
                     >
                         {isGenerating ? (

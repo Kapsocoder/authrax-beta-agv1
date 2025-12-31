@@ -4,6 +4,23 @@ import { db } from "@/firebaseConfig";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
 
+export interface PostMedia {
+  id: string;
+  url: string;
+  type: "image" | "video";
+  source: "upload" | "camera" | "ai_generate";
+  ai_metadata?: {
+    style: string;
+    prompt: string;
+    custom_user_prompt?: string;
+    aspect_ratio: string;
+  };
+  camera_metadata?: {
+    original_filename?: string;
+  };
+  created_at: string;
+}
+
 export interface Post {
   id: string;
   user_id: string;
@@ -21,9 +38,32 @@ export interface Post {
   user_instructions?: string | null; // New field for user notes
   source_url?: string | null;
   media_urls?: string[];
+  media_items?: PostMedia[];
   created_at: string;
   updated_at: string;
 }
+
+export interface LinkedInShareConfig {
+  author: string;
+  commentary: string;
+  visibility: "CONNECTIONS" | "PUBLIC";
+  media?: {
+    id: string;
+  };
+}
+
+export interface ScheduledPostV2 {
+  id: string;
+  userId: string;
+  postId: string;
+  scheduledTime: string;
+  status: "scheduled" | "published" | "failed";
+  linkedinConfig?: LinkedInShareConfig;
+  error?: string;
+  createdAt: string;
+}
+
+export type CreatePostData = Omit<Post, "id" | "user_id" | "created_at" | "updated_at">;
 
 export function usePosts() {
   const { user } = useAuth();

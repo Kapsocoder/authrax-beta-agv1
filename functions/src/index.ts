@@ -1,8 +1,38 @@
 import * as admin from "firebase-admin";
 
-// Initialize Admin SDK first (relying on firebase.ts init if used, but safe to do here)
+// Initialize Admin SDK first
 if (!admin.apps.length) {
-    admin.initializeApp();
+    // Robust local development initialization
+    console.log("DEBUG: Checking Env Vars");
+    // HARDCODED PATH to ensure we load the correct key
+    const localKeyPath = "c:\\Users\\kapil\\OneDrive\\Business\\Development\\Authrax-Beta-Lv1\\authrax\\serviceAccountKey.json";
+
+    if (process.env.FUNCTIONS_EMULATOR && localKeyPath) {
+        try {
+            console.log("Requiring key from:", localKeyPath);
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            let serviceAccount = require(localKeyPath as string);
+
+            // Handle potential ESM default export wrapping
+            if (serviceAccount.default) {
+                console.log("Detecting default export in service account require");
+                serviceAccount = serviceAccount.default;
+            }
+
+            console.log("Loaded Service Account Keys:", Object.keys(serviceAccount));
+
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+                storageBucket: "authrax-beta-lv1.firebasestorage.app"
+            });
+            console.log("Initialized Firebase Admin with local service account.");
+        } catch (e) {
+            console.warn("Failed to load local service account, falling back to default:", e);
+            admin.initializeApp();
+        }
+    } else {
+        admin.initializeApp();
+    }
 }
 
 // Export modules

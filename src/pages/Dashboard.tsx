@@ -257,7 +257,10 @@ export default function Dashboard() {
           inputContext: draft.input_context,
           sourceUrl: draft.source_url,
           sourceType: sourceType,
-          templateId: draft.template_id
+          templateId: draft.template_id,
+          user_instructions: draft.user_instructions,
+          media_items: draft.media_items,
+          media_urls: draft.media_urls
         }
       });
     } else {
@@ -272,7 +275,10 @@ export default function Dashboard() {
           inputContext: draft.input_context,
           sourceUrl: draft.source_url,
           templateId: draft.template_id,
-          aiPrompt: draft.ai_prompt
+          aiPrompt: draft.ai_prompt,
+          user_instructions: draft.user_instructions,
+          media_items: draft.media_items,
+          media_urls: draft.media_urls
         }
       });
     }
