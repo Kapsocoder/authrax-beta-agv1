@@ -22,7 +22,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var _a, _b, _c, _d;
+var _a, _b, _c, _d, _e;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GEMINI_API_KEY = exports.STRIPE_PRICE_ID = exports.WEBHOOK_SECRET = exports.STRIPE_SECRET_KEY = exports.admin = exports.db = void 0;
 const admin = __importStar(require("firebase-admin"));
@@ -30,6 +30,12 @@ exports.admin = admin;
 const functions = __importStar(require("firebase-functions"));
 // Initialize only once
 // Initialize only once
+const path = __importStar(require("path"));
+const dotenv = __importStar(require("dotenv"));
+// Config dotenv to look at root .env if running locally/emulator
+if (process.env.FUNCTIONS_EMULATOR) {
+    dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+}
 if (!admin.apps.length) {
     console.log("DEBUG: firebase.ts initializing admin app");
     // HARDCODED PATH to ensure we load the correct key in emulator
@@ -66,5 +72,23 @@ exports.db = admin.firestore();
 exports.STRIPE_SECRET_KEY = (_a = functions.config().stripe) === null || _a === void 0 ? void 0 : _a.secret_key;
 exports.WEBHOOK_SECRET = (_b = functions.config().stripe) === null || _b === void 0 ? void 0 : _b.webhook_secret;
 exports.STRIPE_PRICE_ID = (_c = functions.config().stripe) === null || _c === void 0 ? void 0 : _c.price_id;
-exports.GEMINI_API_KEY = process.env.GEMINI_API_KEY || ((_d = functions.config().google) === null || _d === void 0 ? void 0 : _d.api_key) || "dummy_key";
+// Attempt to find the key in the service account file if loaded
+let localServiceAccountKey = "";
+if (process.env.FUNCTIONS_EMULATOR) {
+    try {
+        // Re-require to get access to the fresh object in this scope if needed, 
+        // though simplistic approach is to just read it again since it's cached by require
+        const localKeyPath = "c:\\Users\\kapil\\OneDrive\\Business\\Development\\Authrax-Beta-Lv1\\authrax\\serviceAccountKey.json";
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const sa = require(localKeyPath);
+        localServiceAccountKey = sa.GEMINI_API_KEY || ((_d = sa.exclude) === null || _d === void 0 ? void 0 : _d.GEMINI_API_KEY) || sa.api_key;
+        console.log("DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json:", localServiceAccountKey ? "YES" : "NO");
+    }
+    catch (e) {
+        console.warn("DEBUG: Failed to read serviceAccountKey.json for API key:", e);
+    }
+}
+// Prioritize localServiceAccountKey over config to ensure local overrides work
+exports.GEMINI_API_KEY = process.env.GEMINI_API_KEY || localServiceAccountKey || ((_e = functions.config().google) === null || _e === void 0 ? void 0 : _e.api_key) || "dummy_key";
+console.log("DEBUG: Final GEMINI_API_KEY set to:", exports.GEMINI_API_KEY === "dummy_key" ? "dummy_key" : "Configured Key (masked)");
 //# sourceMappingURL=firebase.js.map
