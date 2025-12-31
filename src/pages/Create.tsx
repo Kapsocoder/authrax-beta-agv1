@@ -117,18 +117,37 @@ export default function Create() {
       if (resumeInputContext && resumeInputContext.includes("Filename:")) return "pdf";
     }
     // template mode should go to studio (null mode) but with template pre-selected
-    return initialMode === "edit" || initialMode === "resume" || initialMode === "template" ? null : (initialMode as StudioMode);
+    if (initialMode === "template") return null;
+
+    // Default to 'draft' mode for edit/resume if no specific source type is found,
+    // ensuring the editor UI is shown instead of "What's on your mind?"
+    return (initialMode === "edit" || initialMode === "resume") ? "draft" : (initialMode as StudioMode);
   };
 
   const [mode, setMode] = useState<StudioMode>(getInitialModeFromResume());
-  const [capturedContent, setCapturedContent] = useState(
-    prefilledContent ||
-    (initialMode === "resume" ? (location.state?.inputContext as string || location.state?.content as string || "") : "") ||
-    // Legacy fallback: Only use aiPrompt if we don't know the source type, 
-    // or if it's NOT a structured type (url/video/pdf/voice) where aiPrompt means "notes"
-    (!location.state?.inputContext && aiPrompt && !["url", "video", "pdf", "voice"].includes(resumeSourceType || "") ? aiPrompt : "") ||
-    ""
-  );
+  const [capturedContent, setCapturedContent] = useState(() => {
+    if (prefilledContent) return prefilledContent;
+
+    // Resume/Edit Logic
+    if (initialMode === "resume" || initialMode === "edit") {
+      // 1. Try input_context (The source text/prompt)
+      const ctx = location.state?.inputContext as string;
+      if (ctx) return ctx;
+
+      // 2. Try content (Only if NOT AI generated - manual draft)
+      // If it was AI generated, 'content' is the output. We want the input source here.
+      const content = location.state?.content as string;
+      // We can check is_ai_generated implied by 'edit' mode usually, but strict check:
+      // If no inputContext and it IS ai generated, we might want to fallback to aiPrompt
+
+      // 3. AI Prompt / Notes fallback
+      if (aiPrompt && !["url", "video", "pdf", "voice"].includes(resumeSourceType || "")) return aiPrompt;
+
+      // 4. If Manual draft and no context, content IS the input
+      if (content && initialMode === "resume") return content;
+    }
+    return "";
+  });
 
   const [generatedContent, setGeneratedContent] = useState(
     // In edit mode, content is the generated post. In resume mode, it might be empty.
@@ -217,7 +236,22 @@ export default function Create() {
     context: string;
     tone: string;
     templateId: string | null;
-  } | null>(null);
+  } | null>(() => {
+    // If we have generated content (Edit/Resume), initialize params so Regenerate is disabled
+    if ((initialMode === "edit" || initialMode === "resume") && (location.state?.content as string)) {
+      return {
+        // This must match what capturedContent initializes to for the check to work
+        content: (location.state?.inputContext as string) ||
+          (aiPrompt && !["url", "video", "pdf", "voice"].includes(resumeSourceType || "") ? aiPrompt : "") ||
+          ((initialMode === "resume" && !location.state?.inputContext) ? (location.state?.content as string) : "") ||
+          "",
+        context: location.state?.user_instructions as string || "",
+        tone: "professional", // Default tone assumption
+        templateId: location.state?.templateId as string || null
+      };
+    }
+    return null;
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveDraftRef = useRef<() => Promise<void>>();
@@ -297,22 +331,36 @@ export default function Create() {
     onDraftCreated: (id) => setCurrentDraftId(id)
   });
 
-  // Set initial template from URL/state once templates are loaded
+  // Fetch specific template if resuming or starting with one (Robust fallback)
+  const targetTemplateId = initialTemplateId || resumeTemplateId;
+  const { data: resumedTemplate } = useTemplate(targetTemplateId);
+
+  // Set initial template from resumed template data
   useEffect(() => {
-    const targetTemplateId = initialTemplateId || resumeTemplateId;
-    if (targetTemplateId && allTemplates.length > 0 && !selectedTemplate) {
+    if (resumedTemplate && !selectedTemplate) {
+      setSelectedTemplate(resumedTemplate);
+    }
+  }, [resumedTemplate, selectedTemplate]);
+
+  // Fallback: If resumedTemplate not yet loaded or failed, try finding in allTemplates
+  useEffect(() => {
+    if (targetTemplateId && allTemplates.length > 0 && !selectedTemplate && !resumedTemplate) {
       const found = allTemplates.find(t => t.id === targetTemplateId);
       if (found) {
         setSelectedTemplate(found);
       }
     }
-  }, [initialTemplateId, resumeTemplateId, allTemplates, selectedTemplate]);
+  }, [targetTemplateId, allTemplates, selectedTemplate, resumedTemplate]);
 
   // If coming from schedule with content, go straight to editor
   useEffect(() => {
     if (scheduledContent) {
       setGeneratedContent(scheduledContent);
-      setMode(null);
+      // Only clear mode if NOT resuming/editing (e.g. coming back from schedule page)
+      // For Edit/Resume, we want to stay in the specific mode (e.g. Draft) to show the setup UI
+      if (initialMode !== "edit" && initialMode !== "resume") {
+        setMode(null);
+      }
     } else if (initialTopic && !mode) {
       setCapturedContent(initialTopic);
     }
@@ -1064,11 +1112,12 @@ export default function Create() {
               <CardContent className="space-y-4">
                 {/* Live transcription display */}
                 <div className="bg-secondary/50 rounded-lg p-4 min-h-[150px]">
-                  {capturedContent ? (
-                    <p className="text-foreground whitespace-pre-wrap">{capturedContent}</p>
-                  ) : (
-                    <p className="text-muted-foreground italic">Start speaking to capture your idea...</p>
-                  )}
+                  <Textarea
+                    value={capturedContent}
+                    onChange={(e) => setCapturedContent(e.target.value)}
+                    placeholder="Start speaking to capture your idea, or type here..."
+                    className="min-h-[150px] bg-transparent border-none focus-visible:ring-0 p-0 resize-none text-base"
+                  />
                 </div>
 
                 {/* Additional context */}
@@ -1327,6 +1376,7 @@ export default function Create() {
           {/* Action Buttons - show when mode is selected */}
           {mode && (
             <div className="flex gap-3">
+              {/* Always show template button if no template selected yet, ensuring user can add one */}
               {!selectedTemplate && (
                 <Button
                   variant="outline"
@@ -1451,6 +1501,7 @@ export default function Create() {
           <FloatingVoiceBar
             onTranscriptUpdate={handleVoiceTranscriptUpdate}
             autoStart={true}
+            transcript={capturedContent}
           />
         )}
 

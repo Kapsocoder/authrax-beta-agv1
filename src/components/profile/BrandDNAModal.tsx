@@ -68,42 +68,48 @@ export function BrandDNAModal({ isOpen, onClose, voiceProfile }: BrandDNAModalPr
     if (!voiceProfile) return null;
 
     // Expression Layer Data
+    const toSentenceCase = (str: string | null | undefined) => {
+        if (!str) return str;
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    };
+
+    // Expression Layer Data
     const traits = [
         {
             icon: <MessageSquare className="w-5 h-5 text-blue-500" />,
             label: "Tone",
-            value: voiceProfile.expression_layer?.primary_tone
+            value: toSentenceCase(voiceProfile.expression_layer?.primary_tone
                 ? `${voiceProfile.expression_layer.primary_tone}, ${voiceProfile.expression_layer.secondary_tone}`
-                : (voiceProfile.tone || "Not analyzed"),
+                : (voiceProfile.tone || "Not analyzed")),
             bg: "bg-blue-500/10",
             border: "border-blue-500/20"
         },
         {
             icon: <AlignLeft className="w-5 h-5 text-purple-500" />,
             label: "Sentence Structure",
-            value: voiceProfile.expression_layer?.sentence_style
+            value: toSentenceCase(voiceProfile.expression_layer?.sentence_style
                 || voiceProfile.sentence_length
-                || "Not analyzed",
+                || "Not analyzed"),
             bg: "bg-purple-500/10",
             border: "border-purple-500/20"
         },
         {
             icon: <Smile className="w-5 h-5 text-yellow-500" />,
             label: "Emoji Usage",
-            value: voiceProfile.expression_layer?.emoji_policy
+            value: toSentenceCase(voiceProfile.expression_layer?.emoji_policy
                 || voiceProfile.emoji_usage
-                || "Not analyzed",
+                || "Not analyzed"),
             bg: "bg-yellow-500/10",
             border: "border-yellow-500/20"
         },
         {
             icon: <PenTool className="w-5 h-5 text-green-500" />,
             label: "Writing Style",
-            value: (Array.isArray(voiceProfile.expression_layer?.formatting_habits)
+            value: toSentenceCase((Array.isArray(voiceProfile.expression_layer?.formatting_habits)
                 ? voiceProfile.expression_layer?.formatting_habits.join(", ")
                 : voiceProfile.expression_layer?.formatting_habits)
                 || voiceProfile.writing_style
-                || "Not analyzed",
+                || "Not analyzed"),
             bg: "bg-green-500/10",
             border: "border-green-500/20"
         }

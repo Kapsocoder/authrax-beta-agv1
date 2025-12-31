@@ -7,9 +7,10 @@ import { toast } from "sonner";
 interface FloatingVoiceBarProps {
   onTranscriptUpdate: (text: string) => void;
   autoStart?: boolean;
+  transcript?: string;
 }
 
-export function FloatingVoiceBar({ onTranscriptUpdate, autoStart = true }: FloatingVoiceBarProps) {
+export function FloatingVoiceBar({ onTranscriptUpdate, autoStart = true, transcript }: FloatingVoiceBarProps) {
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [interimText, setInterimText] = useState("");
@@ -42,7 +43,7 @@ export function FloatingVoiceBar({ onTranscriptUpdate, autoStart = true }: Float
 
         if (finalTranscript) {
           // Append to full transcript and update parent immediately
-          fullTranscriptRef.current = fullTranscriptRef.current 
+          fullTranscriptRef.current = fullTranscriptRef.current
             ? fullTranscriptRef.current + " " + finalTranscript.trim()
             : finalTranscript.trim();
           onTranscriptUpdate(fullTranscriptRef.current);
@@ -103,6 +104,13 @@ export function FloatingVoiceBar({ onTranscriptUpdate, autoStart = true }: Float
       }
     };
   }, []);
+
+  // Sync internal transcript ref with external edits
+  useEffect(() => {
+    if (transcript !== undefined) {
+      fullTranscriptRef.current = transcript;
+    }
+  }, [transcript]);
 
   // Auto-start on mount
   useEffect(() => {
@@ -217,7 +225,7 @@ interface SpeechRecognitionErrorEvent {
 }
 
 interface SpeechRecognitionConstructor {
-  new (): SpeechRecognition;
+  new(): SpeechRecognition;
 }
 
 declare global {
