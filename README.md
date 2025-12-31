@@ -42,15 +42,29 @@ This project is a modern web application designed to help users generate, schedu
 
 ## Backend Configuration (Firebase Functions)
 
-This project uses Firebase Cloud Functions for AI generation. You must configure the backend environment variables:
+This project uses a hybrid AI approach:
+*   **Google AI Studio** (for text/recommendations) -> Requires API Key.
+*   **Google Vertex AI** (for image generation) -> Requires GCP Service Account Permissions.
+
+### 1. Environment Variables
 
 ```sh
-# Set Google Gemini API Key
+# Set Google Gemini API Key (Required for Recommendations)
 firebase functions:config:set google.api_key="YOUR_GEMINI_API_KEY"
 
 # Set Stripe Configuration (Optional)
 firebase functions:config:set stripe.secret_key="..." stripe.webhook_secret="..."
 ```
+
+### 2. Vertex AI Setup (CRITICAL for Image Gen)
+
+For the "Generate Image" feature to work, you must enable the Vertex AI API and grant permissions to your Firebase Service Account:
+
+1.  **Enable API:** Go to Google Cloud Console > "Vertex AI API" > **Enable**.
+2.  **Grant Permissions (IAM):**
+    *   Find your service account email (usually `firebase-adminsdk-xxxxx@YOUR-PROJECT.iam.gserviceaccount.com`).
+    *   Go to **IAM & Admin > IAM**.
+    *   Edit the service account and add the role: **`Vertex AI User`**.
 
 To deploy functions:
 ```sh
@@ -72,7 +86,7 @@ The `scripts/` directory contains utilities for data migration and scraping:
 
 - **Frontend**: Vite, React, TypeScript, Tailwind CSS, shadcn-ui
 - **Backend**: Firebase Authentication, Firestore, Cloud Functions
-- **AI**: Google Gemini (via Cloud Functions)
+- **AI**: Google Gemini & Vertex AI (Imagen 2)
 
 ## Development structure
 
