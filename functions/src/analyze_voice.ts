@@ -55,7 +55,7 @@ export const analyzeVoiceHandler = async (req: functions.https.Request, res: fun
 
     // 5. Send to n8n Webhook
     // TODO: Switch to Production URL when confirmed
-    const webhookUrl = "https://authrax.app.n8n.cloud/webhook-test/16876421-9c87-4483-9110-dbeda000d828";
+    const webhookUrl = "https://authrax.app.n8n.cloud/webhook/16876421-9c87-4483-9110-dbeda000d828";
 
     try {
         const response = await axios.post(webhookUrl, {

@@ -8,48 +8,33 @@ gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 const mainFeatures = [
     {
-        icon: Sparkles,
-        title: "AI Voice Cloning 2.0",
-        description: "Stop sounding like default ChatGPT. Our AI analyzes your previous successful posts to learn your unique sentence structure, vocabulary, and tone. It's not just 'polite' or 'witty'—it's YOU.",
+        icon: Shield,
+        title: "Authenticity, without the overhead",
+        description: "Authrax is not a content generator. It's a system for translating your judgment into clear, professional narratives.",
         color: "text-primary",
         bg: "bg-primary/10",
         border: "border-primary/20",
     },
     {
-        icon: PenTool,
-        title: "Viral Hook Optimization",
-        description: "Your first line decides everything. Authrax scores your hooks in real-time against millions of viral posts, suggesting specific edits to stop the scroll and explode your engagement.",
+        icon: Sparkles,
+        title: "Signal over noise",
+        description: "It works with unfinished thoughts, rough notes, and real-world complexity — then shapes them into posts that sound like you on your best day.",
         color: "text-accent",
         bg: "bg-accent/10",
         border: "border-accent/20",
     },
     {
-        icon: Smartphone,
-        title: "True Mobile-First Experience",
-        description: "Inspiration strikes anywhere. Record voice notes, jot down ideas, or edit full drafts from our dedicated mobile interface. It works offline and syncs seamlessly when you're back.",
+        icon: PenTool,
+        title: "No templates. No gimmicks.",
+        description: "We don't just mimic words; we capture your intent. No growth hacks or engagement farming—just your expertise, clear and amplified.",
         color: "text-sky-500",
         bg: "bg-sky-500/10",
         border: "border-sky-500/20",
     }
 ];
 
-const secondaryFeatures = [
-    {
-        icon: Shield,
-        title: "100% LinkedIn Safe",
-        description: "We strictly use official LinkedIn APIs. No sketchy chrome extensions, no automation risks, no bans."
-    },
-    {
-        icon: Clock,
-        title: "Smart Scheduling",
-        description: "Auto-queue your posts for when your specific audience is most active online."
-    },
-    {
-        icon: BarChart3,
-        title: "Deep Analytics",
-        description: "Track conversion, not just impressions. See which topics actually drive profile views."
-    },
-];
+// Removed secondaryFeatures for now or we can use them for 'Trust & Safety' later
+const secondaryFeatures: any[] = [];
 
 export const Features = () => {
     const containerRef = useRef<HTMLElement>(null);
@@ -59,42 +44,57 @@ export const Features = () => {
 
     useGSAP(() => {
         // Animate Header
-        gsap.from(headerRef.current, {
-            scrollTrigger: {
-                trigger: headerRef.current,
-                start: "top 80%",
-            },
-            y: 50,
-            opacity: 0,
-            duration: 1,
-            ease: "power3.out"
-        });
+        if (headerRef.current) {
+            gsap.fromTo(headerRef.current,
+                { y: 50, opacity: 0 },
+                {
+                    y: 0,
+                    opacity: 1,
+                    duration: 1,
+                    ease: "power3.out",
+                    scrollTrigger: {
+                        trigger: headerRef.current,
+                        start: "top 80%",
+                    }
+                }
+            );
+        }
 
         // Animate Main Grid Cards
-        gsap.from(mainGridRef.current!.children, {
-            scrollTrigger: {
-                trigger: mainGridRef.current,
-                start: "top 75%",
-            },
-            y: 100,
-            opacity: 0,
-            stagger: 0.2,
-            duration: 1,
-            ease: "power4.out"
-        });
+        if (mainGridRef.current?.children) {
+            gsap.fromTo(Array.from(mainGridRef.current.children),
+                { y: 100, opacity: 0 },
+                {
+                    y: 0,
+                    opacity: 1,
+                    stagger: 0.2,
+                    duration: 1,
+                    ease: "power4.out",
+                    scrollTrigger: {
+                        trigger: mainGridRef.current,
+                        start: "top 75%",
+                    }
+                }
+            );
+        }
 
         // Animate Secondary Grid Items
-        gsap.from(secondaryGridRef.current!.children, {
-            scrollTrigger: {
-                trigger: secondaryGridRef.current,
-                start: "top 85%",
-            },
-            x: -30,
-            opacity: 0,
-            stagger: 0.1,
-            duration: 0.8,
-            ease: "power2.out"
-        });
+        if (secondaryGridRef.current?.children) {
+            gsap.fromTo(Array.from(secondaryGridRef.current.children),
+                { x: -30, opacity: 0 },
+                {
+                    x: 0,
+                    opacity: 1,
+                    stagger: 0.1,
+                    duration: 0.8,
+                    ease: "power2.out",
+                    scrollTrigger: {
+                        trigger: secondaryGridRef.current,
+                        start: "top 85%",
+                    }
+                }
+            );
+        }
 
     }, { scope: containerRef });
 
@@ -105,12 +105,13 @@ export const Features = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                 <div ref={headerRef} className="text-center max-w-3xl mx-auto mb-20">
                     <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">
-                        Built for the modern <br />
-                        <span className="text-primary">LinkedIn Creator</span>
+                        Your expertise is valuable. <br />
+                        <span className="text-primary">Sharing it shouldn’t feel risky.</span>
                     </h2>
                     <p className="text-xl text-muted-foreground leading-relaxed">
-                        We've packed everything you need to build a personal brand that drives revenue,
-                        without spending hours every day fighting with blank pages.
+                        Generic AI sounds inauthentic. Ghostwriters dilute your voice. Writing from scratch takes time you don’t have.
+                        <br />
+                        <span className="text-foreground font-medium mt-2 block">Authrax exists to remove that trade-off.</span>
                     </p>
                 </div>
 
@@ -139,26 +140,9 @@ export const Features = () => {
                     ))}
                 </div>
 
-                {/* Secondary Features Grid */}
-                <div ref={secondaryGridRef} className="grid grid-cols-1 md:grid-cols-3 gap-8 p-10 bg-secondary/20 rounded-[2.5rem] border border-border/50">
-                    {secondaryFeatures.map((feature) => (
-                        <div
-                            key={feature.title}
-                            className="flex gap-4 items-start"
-                        >
-                            <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center border border-border shrink-0 shadow-sm group-hover:bg-primary/10 transition-colors">
-                                <feature.icon className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-lg mb-1">{feature.title}</h4>
-                                <p className="text-sm text-muted-foreground leading-relaxed">
-                                    {feature.description}
-                                </p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                {/* Secondary Features Grid - Hidden for now */}
+
             </div>
-        </section>
+        </section >
     );
 };

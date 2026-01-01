@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { NavigationGuardProvider } from "@/contexts/NavigationGuardContext";
 import Index from "./pages/Index";
+import Why from "./pages/Why";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Create from "./pages/Create";
@@ -64,6 +65,7 @@ const AppRoutes = () => (
   <div className="dark">
     <Routes>
       <Route path="/" element={<Index />} />
+      <Route path="/why" element={<Why />} />
       <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
       <Route path="/auth/callback/linkedin" element={<ProtectedRoute><LinkedInCallback /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

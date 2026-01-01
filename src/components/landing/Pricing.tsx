@@ -13,26 +13,26 @@ const tiers = [
         price: "$0",
         period: "forever",
         description: "Perfect for testing the waters.",
-        features: ["5 AI Post Generations/mo", "Basic Voice Training", "Mobile App Access", "Preview & Edit"],
+        features: ["2 AI Post Generations/mo", "Basic Voice Training", "Mobile App Access", "Preview & Edit"],
         cta: "Start Free",
         popular: false,
     },
     {
-        name: "Pro",
-        price: "$29",
+        name: "Professional",
+        price: "$19",
         period: "/month",
-        description: "For creators serious about growth.",
-        features: ["Unlimited AI Generations", "Advanced Voice Cloning", "Viral Hook Scoring", "Smart Scheduling", "Analytics Dashboard"],
+        description: "For individuals establishing a consistent, credible voice.",
+        features: ["Full Brand DNA analysis", "Unlimited content synthesis", "Reputation-grade safety", "AI Images with Posts"],
         cta: "Start 7-Day Trial",
         popular: true,
         highlight: "Most Popular",
     },
     {
-        name: "Agency",
+        name: "Executive",
         price: "$99",
         period: "/month",
-        description: "Manage multiple personal brands.",
-        features: ["5 User Profiles", "Team Collaboration", "Priority Support", "Custom API Access", "White-label Reports"],
+        description: "For teams managing multiple professional brands.",
+        features: ["Multi-profile support", "Team collaboration", "Priority infrastructure"],
         cta: "Contact Sales",
         popular: false,
     },
@@ -76,10 +76,7 @@ export const Pricing = () => {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                 <div ref={headerRef} className="text-center mb-20">
-                    <h2 className="text-3xl md:text-5xl font-bold mb-6">Simple, Transparent <br /><span className="text-primary">Pricing</span></h2>
-                    <p className="text-xl text-muted-foreground">
-                        Stop paying for 5 different tools. Get everything you need in one.
-                    </p>
+                    <h2 className="text-3xl md:text-5xl font-bold mb-6">Choose the Level That Matches Your Intent</h2>
                 </div>
 
                 <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">

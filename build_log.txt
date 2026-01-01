@@ -1,0 +1,40 @@
+
+> authrax@0.0.0 build
+> vite build
+
+[36mvite v5.4.19 [32mbuilding for production...[36m[39m
+transforming...
+
+/noise.png referenced in /noise.png didn't resolve at build time, it will remain unchanged to be resolved at runtime
+[32m✓[39m 2134 modules transformed.
+rendering chunks...
+[31mx[39m Build failed in 7.77s
+
+PWA v1.2.0
+mode      generateSW
+precache  9 entries (23.09 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-66610c77.js
+[31merror during build:
+[31m[vite:esbuild-transpile] Transform failed with 1 error:
+assets/index-!~{001}~.js:37821:39: ERROR: Top-level await is not available in the configured target environment ("chrome87", "edge88", "es2020", "firefox78", "safari14" + 2 overrides)[31m
+[33m
+[33mTop-level await is not available in the configured target environment ("chrome87", "edge88", "es2020", "firefox78", "safari14" + 2 overrides)[33m
+37819|  const functions = getFunctions(app);
+37820|  if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+37821|    const { connectFunctionsEmulator } = await __vitePreload(async () => { const { connectFunctionsEmulator } = await import('./index.esm-!~{003}~.js').then(n => n.H);return { connectFunctionsEmulator }},true?__VITE_PRELOAD__:void 0);
+   |                                         ^
+37822|    connectFunctionsEmulator(functions, "localhost", 5001);
+37823|    console.log("🔥 Connected to Local Cloud Functions Emulator");
+[31m
+    at failureErrorWithLog (C:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\node_modules\esbuild\lib\main.js:1472:15)
+    at C:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\node_modules\esbuild\lib\main.js:755:50
+    at responseCallbacks.<computed> (C:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\node_modules\esbuild\lib\main.js:622:9)
+    at handleIncomingPacket (C:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\node_modules\esbuild\lib\main.js:677:12)
+    at Socket.readFromStdout (C:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\node_modules\esbuild\lib\main.js:600:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)[39m

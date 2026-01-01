@@ -24,13 +24,17 @@ export const storage = getStorage(app);
 export const functions = getFunctions(app);
 
 // Connect to emulators if strictly on localhost
+// Connect to emulators if strictly on localhost
+/*
 if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
     // Note: This connects ONLY Cloud Functions to the local emulator.
     // Auth and Firestore will still use Production unless configured otherwise.
     // This allows testing the "Generate Image" fix locally while keeping data in prod.
-    const { connectFunctionsEmulator } = await import("firebase/functions");
-    connectFunctionsEmulator(functions, "localhost", 5001);
-    console.log("🔥 Connected to Local Cloud Functions Emulator");
+    import("firebase/functions").then(({ connectFunctionsEmulator }) => {
+        connectFunctionsEmulator(functions, "localhost", 5001);
+        console.log("🔥 Connected to Local Cloud Functions Emulator");
+    });
 }
+*/
 
 export default app;

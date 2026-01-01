@@ -78,7 +78,7 @@ const analyzeVoiceHandler = async (req, res) => {
     console.log(`[AnalyzeVoice] Starting for user ${userId} with ${posts.length} posts`);
     // 5. Send to n8n Webhook
     // TODO: Switch to Production URL when confirmed
-    const webhookUrl = "https://authrax.app.n8n.cloud/webhook-test/16876421-9c87-4483-9110-dbeda000d828";
+    const webhookUrl = "https://authrax.app.n8n.cloud/webhook/16876421-9c87-4483-9110-dbeda000d828";
     try {
         const response = await axios_1.default.post(webhookUrl, {
             user_id: userId,

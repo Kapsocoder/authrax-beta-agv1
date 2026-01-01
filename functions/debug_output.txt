@@ -1,0 +1,735 @@
+Starting Emulator with logging... 
+
+> serve
+> firebase emulators:start --only functions
+
+[36m[1mi  emulators:[22m[39m Starting emulators: functions
+[33m[1m!  emulators:[22m[39m It seems that you are running multiple instances of the emulator suite for project authrax-beta-lv1. This may result in unexpected behavior.
+[33m[1m!  functions:[22m[39m The following emulators are not running, calls to these services from the Functions emulator will affect production: [1mapphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect[22m
+[36m[1mi  functions:[22m[39m Watching "C:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\functions" for Cloud Functions...
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8920
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8652
+
+DEBUG: Checking Env Vars
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: ⚙️  suppress all logs with { quiet: true }
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[32m[1m+  functions[us-central1-getLinkedInAuthUrl]:[22m[39m [1mhttp[22m function initialized (http://127.0.0.1:5001/authrax-beta-lv1/us-central1/getLinkedInAuthUrl).
+[32m[1m+  functions[us-central1-handleLinkedInCallback]:[22m[39m [1mhttp[22m function initialized (http://127.0.0.1:5001/authrax-beta-lv1/us-central1/handleLinkedInCallback).
+[32m[1m+  functions[us-central1-publishToLinkedIn]:[22m[39m [1mhttp[22m function initialized (http://127.0.0.1:5001/authrax-beta-lv1/us-central1/publishToLinkedIn).
+[32m[1m+  functions[us-central1-analyzeVoice]:[22m[39m [1mhttp[22m function initialized (http://127.0.0.1:5001/authrax-beta-lv1/us-central1/analyzeVoice).
+[32m[1m+  functions[us-central1-generatePost]:[22m[39m [1mhttp[22m function initialized (http://127.0.0.1:5001/authrax-beta-lv1/us-central1/generatePost).
+[32m[1m+  functions[us-central1-generateRecommendations]:[22m[39m [1mhttp[22m function initialized (http://127.0.0.1:5001/authrax-beta-lv1/us-central1/generateRecommendations).
+[32m[1m+  functions[us-central1-fetchTrending]:[22m[39m [1mhttp[22m function initialized (http://127.0.0.1:5001/authrax-beta-lv1/us-central1/fetchTrending).
+[36m[1mi  functions[us-central1-scheduledCleanup]:[22m[39m function ignored because the pubsub emulator does not exist or is not running.
+[36m[1mi  functions[us-central1-scheduledTopicWorker]:[22m[39m function ignored because the pubsub emulator does not exist or is not running.
+[32m[1m+  functions[us-central1-suggestImagePrompt]:[22m[39m [1mhttp[22m function initialized (http://127.0.0.1:5001/authrax-beta-lv1/us-central1/suggestImagePrompt).
+[32m[1m+  functions[us-central1-generateImage]:[22m[39m [1mhttp[22m function initialized (http://127.0.0.1:5001/authrax-beta-lv1/us-central1/generateImage).
+[32m[1m+  functions[us-central1-extractContent]:[22m[39m [1mhttp[22m function initialized (http://127.0.0.1:5001/authrax-beta-lv1/us-central1/extractContent).
+[32m[1m+  functions[us-central1-createStripeCheckoutSession]:[22m[39m [1mhttp[22m function initialized (http://127.0.0.1:5001/authrax-beta-lv1/us-central1/createStripeCheckoutSession).
+[32m[1m+  functions[us-central1-handleStripeWebhook]:[22m[39m [1mhttp[22m function initialized (http://127.0.0.1:5001/authrax-beta-lv1/us-central1/handleStripeWebhook).
+[32m[1m+  functions[us-central1-handleVoiceAnalysisResult]:[22m[39m [1mhttp[22m function initialized (http://127.0.0.1:5001/authrax-beta-lv1/us-central1/handleVoiceAnalysisResult).
+
+[90m┌─────────────────────────────────────────────────────────────┐[39m
+[90m│[39m [32m✔[39m  [1mAll emulators ready! It is now safe to connect your app.[22m [90m│[39m
+[90m│[39m [36mi[39m  View Emulator UI at [4m[1mhttp://127.0.0.1:4000/[22m[24m               [90m│[39m
+[90m└─────────────────────────────────────────────────────────────┘[39m
+
+[90m┌───────────[39m[90m┬────────────────[39m[90m┬─────────────────────────────────┐[39m
+[90m│[39m[33m Emulator  [39m[90m│[39m[33m Host:Port      [39m[90m│[39m[33m View in Emulator UI             [39m[90m│[39m
+[90m├───────────[39m[90m┼────────────────[39m[90m┼─────────────────────────────────┤[39m
+[90m│[39m Functions [90m│[39m 127.0.0.1:5001 [90m│[39m [4m[1mhttp://127.0.0.1:4000/functions[22m[24m [90m│[39m
+[90m└───────────[39m[90m┴────────────────[39m[90m┴─────────────────────────────────┘[39m
+[90m  Emulator Hub host: 127.0.0.1 port: 4400[39m
+[90m  Other reserved ports:[39m 4500
+
+Issues? Report them at [4m[1mhttps://github.com/firebase/firebase-tools/issues[22m[24m and attach the *-debug.log files.
+ 
+Serving at port 8044
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[90m> [39m DEBUG: Checking Env Vars
+[90m> [39m Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+[90m> [39m Loaded Service Account Keys: [
+[90m> [39m   'type',
+[90m> [39m   'project_id',
+[90m> [39m   'private_key_id',
+[90m> [39m   'private_key',
+[90m> [39m   'client_email',
+[90m> [39m   'client_id',
+[90m> [39m   'auth_uri',
+[90m> [39m   'token_uri',
+[90m> [39m   'auth_provider_x509_cert_url',
+[90m> [39m   'client_x509_cert_url',
+[90m> [39m   'universe_domain'
+[90m> [39m ]
+[90m> [39m Initialized Firebase Admin with local service account.
+[90m> [39m [dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[33m[1m!  functions:[22m[39m The Cloud Firestore emulator is not running, so calls to Firestore will affect production.
+[90m> [39m DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+[90m> [39m DEBUG: Final GEMINI_API_KEY set to: Configured Key (masked)
+[36m[1mi  functions:[22m[39m Beginning execution of "us-central1-suggestImagePrompt"
+[36m[1mi  functions:[22m[39m Finished "us-central1-suggestImagePrompt" in 3.5352ms
+[36m[1mi  functions:[22m[39m Beginning execution of "us-central1-suggestImagePrompt"
+[90m> [39m {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+[90m> [39m DEBUG: Calling Vertex AI (Text). Project: authrax-beta-lv1, Location: us-central1, Model: gemini-2.5-flash-image
+[36m[1mi  functions:[22m[39m Finished "us-central1-suggestImagePrompt" in 6432.3653ms
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[90m> [39m DEBUG: Checking Env Vars
+[90m> [39m Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+[90m> [39m Loaded Service Account Keys: [
+[90m> [39m   'type',
+[90m> [39m   'project_id',
+[90m> [39m   'private_key_id',
+[90m> [39m   'private_key',
+[90m> [39m   'client_email',
+[90m> [39m   'client_id',
+[90m> [39m   'auth_uri',
+[90m> [39m   'token_uri',
+[90m> [39m   'auth_provider_x509_cert_url',
+[90m> [39m   'client_x509_cert_url',
+[90m> [39m   'universe_domain'
+[90m> [39m ]
+[90m> [39m Initialized Firebase Admin with local service account.
+[90m> [39m [dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[90m> [39m DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+[90m> [39m DEBUG: Final GEMINI_API_KEY set to: Configured Key (masked)
+[36m[1mi  functions:[22m[39m Beginning execution of "us-central1-generateImage"
+[36m[1mi  functions:[22m[39m Finished "us-central1-generateImage" in 3.0777ms
+[36m[1mi  functions:[22m[39m Beginning execution of "us-central1-generateImage"
+[90m> [39m {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+[90m> [39m Generating prompt for style: professional with content length: 376
+[90m> [39m DEBUG: Calling Vertex AI (Text). Project: authrax-beta-lv1, Location: us-central1, Model: gemini-2.5-flash-image
+[90m> [39m Gemini generated prompt: A professional photo, shallow depth of field, subtle executive environment, 35mm lens, 8k resolution. The image features a stylized, subtle representation of growth and innovation within a corporate context, perhaps a sleek, modern desk with a subtly glowing, abstract holographic representation of interconnected platforms, symbolizing technology and collaboration, no text
+[90m> [39m DEBUG: Calling Vertex AI (Imagen). Project: authrax-beta-lv1, Location: us-central1, Model: imagegeneration@006
+[33m[1m!  functions:[22m[39m The Firebase Storage emulator is not running, so calls to Firebase Storage will affect production.
+[33m[1m! [22m[39m Google API requested!
+   - URL: "https://www.googleapis.com/oauth2/v4/token"
+   - Be careful, this may be a production service.
+[33m[1m! [22m[39m Google API requested!
+   - URL: "https://storage.googleapis.com/upload/storage/v1/b/authrax-beta-lv1.firebasestorage.app/o?name=generated_images%2F4TytREh0UXXL2Ual1P8d4nu7q8S2%2F1767169342120.png&uploadType=resumable"
+   - Be careful, this may be a production service.
+[33m[1m! [22m[39m Google API requested!
+   - URL: "https://storage.googleapis.com/upload/storage/v1/b/authrax-beta-lv1.firebasestorage.app/o?name=generated_images%2F4TytREh0UXXL2Ual1P8d4nu7q8S2%2F1767169342120.png&uploadType=resumable&upload_id=AHVrFxPqzQYfnTsl5ixVmw0HCXvVT6-KvgJWdqTFV5hlTa8erK4bjzfJ12VFNvma5ox4I5EB3rIN3NJFfKgSnluFwQorwvOOQBUe-euBUZkqzA"
+   - Be careful, this may be a production service.
+[36m[1mi  functions:[22m[39m Finished "us-central1-generateImage" in 18634.9627ms
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8062
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8735
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8720
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8712
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8972
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8192
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8986
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8576
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: ⚙️  suppress all logs with { quiet: true }
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8494
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+Serving at port 8162
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[90m> [39m DEBUG: Checking Env Vars
+[90m> [39m Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+[90m> [39m Loaded Service Account Keys: [
+[90m> [39m   'type',
+[90m> [39m   'project_id',
+[90m> [39m   'private_key_id',
+[90m> [39m   'private_key',
+[90m> [39m   'client_email',
+[90m> [39m   'client_id',
+[90m> [39m   'auth_uri',
+[90m> [39m   'token_uri',
+[90m> [39m   'auth_provider_x509_cert_url',
+[90m> [39m   'client_x509_cert_url',
+[90m> [39m   'universe_domain'
+[90m> [39m ]
+[90m> [39m Initialized Firebase Admin with local service account.
+[90m> [39m [dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[90m> [39m DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+[90m> [39m DEBUG: Final GEMINI_API_KEY set to: Configured Key (masked)
+[90m> [39m DEBUG: Checking Env Vars
+[90m> [39m Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+[90m> [39m Loaded Service Account Keys: [
+[90m> [39m   'type',
+[90m> [39m   'project_id',
+[90m> [39m   'private_key_id',
+[90m> [39m   'private_key',
+[90m> [39m   'client_email',
+[90m> [39m   'client_id',
+[90m> [39m   'auth_uri',
+[90m> [39m   'token_uri',
+[90m> [39m   'auth_provider_x509_cert_url',
+[90m> [39m   'client_x509_cert_url',
+[90m> [39m   'universe_domain'
+[90m> [39m ]
+[90m> [39m Initialized Firebase Admin with local service account.
+[90m> [39m [dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[90m> [39m DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+[90m> [39m DEBUG: Final GEMINI_API_KEY set to: Configured Key (masked)
+[36m[1mi  functions:[22m[39m Beginning execution of "us-central1-fetchTrending"
+[36m[1mi  functions:[22m[39m Finished "us-central1-fetchTrending" in 2.2411ms
+[36m[1mi  functions:[22m[39m Beginning execution of "us-central1-fetchTrending"
+[90m> [39m {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+[36m[1mi  functions:[22m[39m Beginning execution of "us-central1-fetchTrending"
+[36m[1mi  functions:[22m[39m Finished "us-central1-fetchTrending" in 3.6533ms
+[36m[1mi  functions:[22m[39m Beginning execution of "us-central1-fetchTrending"
+[90m> [39m {"verifications":{"app":"MISSING","auth":"VALID"},"logging.googleapis.com/labels":{"firebase-log-type":"callable-request-verification"},"severity":"DEBUG","message":"Callable request verification passed"}
+[36m[1mi  functions:[22m[39m Finished "us-central1-fetchTrending" in 8181.9657ms
+[36m[1mi  functions:[22m[39m Finished "us-central1-fetchTrending" in 13010.4257ms
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8342
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8890
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8963
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
+Serving at port 8284
+
+DEBUG: Checking Env Vars
+
+Requiring key from: c:\Users\kapil\OneDrive\Business\Development\Authrax-Beta-Lv1\authrax\serviceAccountKey.json
+
+Loaded Service Account Keys: [
+  'type',
+  'project_id',
+  'private_key_id',
+  'private_key',
+  'client_email',
+  'client_id',
+  'auth_uri',
+  'token_uri',
+  'auth_provider_x509_cert_url',
+  'client_x509_cert_url',
+  'universe_domain'
+]
+
+Initialized Firebase Admin with local service account.
+
+[dotenv@17.2.3] injecting env (6) from ..\.env -- tip: ⚙️  override existing env vars with { override: true }
+
+DEBUG: Loaded GEMINI_API_KEY from serviceAccountKey.json: NO
+
+DEBUG: Final GEMINI_API_KEY set to: dummy_key
+
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[32m[1m+  functions:[22m[39m Loaded functions definitions from source: getLinkedInAuthUrl, handleLinkedInCallback, publishToLinkedIn, analyzeVoice, generatePost, generateRecommendations, fetchTrending, scheduledCleanup, scheduledTopicWorker, suggestImagePrompt, generateImage, extractContent, createStripeCheckoutSession, handleStripeWebhook, handleVoiceAnalysisResult.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mpackage.json indicates an outdated version of firebase-functions. Please upgrade using [1mnpm install --save firebase-functions@latest[22m in your functions directory.
+[33m[1m! [22m[39m [1m[33mfunctions: [39m[22mPlease note that there will be breaking changes when you upgrade.
+[33m[1m!  functions:[22m[39m Your requested "node" version "22" doesn't match your global version "24". Using node@24 from host.
+[36m[1mi [22m[39m [36m[1mfunctions: [22m[39mLoaded environment variables from .env.
+[36m[1mi  functions:[22m[39m You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly

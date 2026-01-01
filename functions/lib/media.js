@@ -31,9 +31,9 @@ const functions = __importStar(require("firebase-functions"));
 const axios_1 = __importDefault(require("axios"));
 const firebase_1 = require("./firebase");
 // Helper to call Vertex AI Gemini Model (Text)
-// Uses gemini-2.5-flash-image (Nano Banana) as primary for creative prompts, falls back to gemini-1.0-pro
+// Uses gemini-2.5-flash-image (Nano Banana) as default, but can be overridden
 async function callVertexGemini(prompt, systemInstruction, modelId = "gemini-2.5-flash-image") {
-    var _a, _b, _c, _d;
+    var _a, _b;
     const projectId = firebase_1.admin.app().options.projectId || process.env.GCLOUD_PROJECT || "authrax-beta";
     const location = "us-central1";
     if (!projectId)
@@ -52,30 +52,14 @@ async function callVertexGemini(prompt, systemInstruction, modelId = "gemini-2.5
             parts: [{ text: systemInstruction }]
         };
     }
-    const mkRequest = async (mId) => {
-        console.log(`DEBUG: Calling Vertex AI (Text). Project: ${projectId}, Location: ${location}, Model: ${mId}`);
-        return axios_1.default.post(`https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${mId}:generateContent`, requestBody, {
+    try {
+        console.log(`DEBUG: Calling Vertex AI (Text). Project: ${projectId}, Location: ${location}, Model: ${modelId}`);
+        const response = await axios_1.default.post(`https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${modelId}:generateContent`, requestBody, {
             headers: {
                 "Authorization": `Bearer ${token.access_token}`,
                 "Content-Type": "application/json"
             }
         });
-    };
-    try {
-        let response;
-        try {
-            response = await mkRequest(modelId);
-        }
-        catch (err) {
-            // If primary model fails with 404, try fallback
-            if (((_a = err.response) === null || _a === void 0 ? void 0 : _a.status) === 404 && modelId !== "gemini-1.0-pro") {
-                console.warn(`Version ${modelId} not found, falling back to gemini-1.0-pro`);
-                response = await mkRequest("gemini-1.0-pro");
-            }
-            else {
-                throw err;
-            }
-        }
         if (response.status !== 200) {
             throw new Error(`Vertex AI API failed: ${response.statusText}`);
         }
@@ -90,12 +74,8 @@ async function callVertexGemini(prompt, systemInstruction, modelId = "gemini-2.5
     catch (error) {
         console.error("Vertex AI Call Failed:", error);
         if (axios_1.default.isAxiosError(error)) {
-            console.error("Vertex AI Error Response Data:", JSON.stringify((_b = error.response) === null || _b === void 0 ? void 0 : _b.data));
-            console.error("Vertex AI Error Status:", (_c = error.response) === null || _c === void 0 ? void 0 : _c.status);
-            // Distinguish specific model unavailability
-            if (((_d = error.response) === null || _d === void 0 ? void 0 : _d.status) === 404) {
-                throw new Error("Text Generation Model not available");
-            }
+            console.error("Vertex AI Error Response Data:", JSON.stringify((_a = error.response) === null || _a === void 0 ? void 0 : _a.data));
+            console.error("Vertex AI Error Status:", (_b = error.response) === null || _b === void 0 ? void 0 : _b.status);
         }
         throw error;
     }
@@ -120,8 +100,9 @@ exports.suggestImagePrompt = functions.runWith({
 
         Output ONLY the prompt text, no explanations.
         `;
-        // Use Vertex AI helper with updated model ID
-        const generatedPrompt = await callVertexGemini(prompt);
+        // Use Vertex AI helper with gemini-1.5-flash-001 for text generation
+        // using the same authenticated credentials as the image generation
+        const generatedPrompt = await callVertexGemini(prompt, undefined, 'gemini-1.5-flash-001');
         return { prompt: generatedPrompt };
     }
     catch (error) {
@@ -171,28 +152,24 @@ exports.generateImage = functions.runWith({
             finalPrompt = await callVertexGemini("Generate the image prompt.", systemInstruction);
             console.log(`Gemini generated prompt: ${finalPrompt}`);
         }
+        // Append Aspect Ratio instruction to the prompt for Nano Banana model
+        if (aspectRatio) {
+            finalPrompt = `${finalPrompt} --aspect-ratio ${aspectRatio}`;
+        }
         const projectId = firebase_1.admin.app().options.projectId || process.env.GCLOUD_PROJECT || "authrax-beta";
         const location = "us-central1";
         if (!projectId)
             throw new Error("Could not determine Project ID");
         // Get Auth Token
         const token = await firebase_1.admin.credential.applicationDefault().getAccessToken();
-        // Switch to Imagen 2 (imagegeneration@006) which is Generally Available.
-        // Imagen 3 often requires specific allowlisting or is region-restricted on some accounts.
-        const modelId = "imagegeneration@006";
-        console.log(`DEBUG: Calling Vertex AI (Imagen). Project: ${projectId}, Location: ${location}, Model: ${modelId}`);
-        // Imagen uses the 'predict' endpoint, NOT 'generateContent'
-        const response = await axios_1.default.post(`https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${modelId}:predict`, {
-            instances: [
-                { prompt: finalPrompt }
-            ],
-            parameters: {
-                sampleCount: 1,
-                // Imagen 2 does not support aspectRatio in the same way, but it does support 'aspectRatio' string.
-                // Common values: "1:1", "4:3", "3:4", "16:9", "9:16".
-                // We'll pass it if available (defaulting to 1:1 if undefined).
-                aspectRatio: aspectRatio || "1:1"
-            }
+        // Switch BACK to Gemini 2.5 Flash Image ("Nano Banana")
+        const modelId = "gemini-2.5-flash-image";
+        console.log(`DEBUG: Calling Vertex AI (Nano Banana). Project: ${projectId}, Location: ${location}, Model: ${modelId}`);
+        const response = await axios_1.default.post(`https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${modelId}:generateContent`, {
+            contents: [{
+                    role: "user",
+                    parts: [{ text: finalPrompt }]
+                }]
         }, {
             headers: {
                 "Authorization": `Bearer ${token.access_token}`,
@@ -202,25 +179,22 @@ exports.generateImage = functions.runWith({
         if (response.status !== 200) {
             throw new Error(`Vertex AI API failed: ${response.statusText}`);
         }
-        // Parse Imagen Response
-        /*
-          {
-            "predictions": [
-              {
-                "bytesBase64Encoded": "..."
-              }
-            ]
-          }
-        */
-        const predictions = response.data.predictions;
-        if (!predictions || predictions.length === 0) {
-            throw new Error("No predictions returned from Imagen.");
+        // Parse Gemini Response
+        const candidates = response.data.candidates;
+        if (!candidates || candidates.length === 0) {
+            throw new Error("No candidates returned from Gemini.");
         }
-        const base64Image = predictions[0].bytesBase64Encoded || predictions[0]; // fallback if just string
-        if (!base64Image) {
-            console.error("Imagen Response:", JSON.stringify(response.data));
-            throw new Error("No image data found in response.");
+        const parts = candidates[0].content.parts;
+        if (!parts || parts.length === 0) {
+            throw new Error("No content parts returned.");
         }
+        // Look for inlineData (image)
+        const imagePart = parts.find((p) => p.inlineData && p.inlineData.data);
+        if (!imagePart) {
+            console.error("Gemini Response Parts:", JSON.stringify(parts));
+            throw new Error("No image data found in response. The model might have returned text instead.");
+        }
+        const base64Image = imagePart.inlineData.data;
         // Save to bucket
         const bucket = firebase_1.admin.storage().bucket();
         const fileName = `generated_images/${context.auth.uid}/${Date.now()}.png`;
@@ -229,11 +203,26 @@ exports.generateImage = functions.runWith({
         await file.save(buffer, {
             metadata: { contentType: 'image/png' }
         });
-        // Get Signed URL
-        const [url] = await file.getSignedUrl({
-            action: 'read',
-            expires: '03-01-2500' // Practically permanent
-        });
+        // Get URL - Try Signed URL first, fallback to Public URL to bypass IAM permissions if needed
+        let url;
+        try {
+            const [signedUrl] = await file.getSignedUrl({
+                action: 'read',
+                expires: '03-01-2500' // Practically permanent
+            });
+            url = signedUrl;
+        }
+        catch (signError) {
+            console.warn("Error getting signed URL, attempting makePublic as fallback:", signError);
+            try {
+                await file.makePublic();
+                url = file.publicUrl();
+            }
+            catch (publicError) {
+                console.error("Failed to make file public too:", publicError);
+                throw new functions.https.HttpsError("permission-denied", "Could not generate access URL for image. Please add 'Service Account Token Creator' role to the App Engine default service account.");
+            }
+        }
         return {
             imageUrl: url,
             generatedPrompt: finalPrompt
@@ -245,8 +234,7 @@ exports.generateImage = functions.runWith({
             console.error("Axios Response Data:", JSON.stringify((_a = error.response) === null || _a === void 0 ? void 0 : _a.data));
             console.error("Axios Status:", (_b = error.response) === null || _b === void 0 ? void 0 : _b.status);
             if (((_c = error.response) === null || _c === void 0 ? void 0 : _c.status) === 404) {
-                // Still might happen if Imagen 3 isn't enabled
-                throw new functions.https.HttpsError("not-found", "The Image Generation model is not available in this project. Please ensure Vertex AI API is enabled.");
+                throw new functions.https.HttpsError("not-found", "The Nano Banana (Gemini 2.5) model is not available in this project/location.");
             }
         }
         throw new functions.https.HttpsError("internal", error.message || "Failed to generate image.");

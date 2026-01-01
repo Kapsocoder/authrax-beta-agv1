@@ -76,7 +76,7 @@ export const Hero = () => {
                 gsap.to(textRevealRef.current, {
                     duration: 1.5,
                     text: {
-                        value: "Start Building Your Legend.",
+                        value: "Professional Reputation.",
                         delimiter: ""
                     },
                     ease: "none",
@@ -126,37 +126,38 @@ export const Hero = () => {
                 <div ref={heroContentRef}>
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-8 backdrop-blur-sm">
                         <Linkedin className="w-4 h-4" />
-                        <span>The #1 AI LinkedIn Personal Branding Platform</span>
+                        <span>The Personal Brand Operating System</span>
                     </div>
 
                     <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 leading-tight tracking-tight">
-                        Stop Sounding Like a Robot. <br />
+                        The Operating System for Your <br />
                         <span ref={textRevealRef} className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent min-h-[1.2em] inline-block">
-                            {/* Starts empty, populated by GSAP */}
+                            {/* Professional Reputation. */}
                         </span>
                     </h1>
 
                     <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-                        Create authentic LinkedIn content in seconds. Train AI on your unique voice,
-                        schedule posts, and grow your audience—on your desktop or phone.
+                        Build a personal brand that reflects your real expertise.
+                        Authrax learns how your thinking shows up in writing, so you can publish consistently — without compromising credibility.
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
                         <Button
                             size="xl"
+                            // onClick={() => navigate("/auth")} // Keep existing nav logic or update
                             onClick={() => navigate("/auth")}
                             className="w-full sm:w-auto text-lg px-8 py-6 h-auto shadow-[0_0_30px_-10px_rgba(var(--primary),0.5)] hover:shadow-[0_0_50px_-10px_rgba(var(--primary),0.6)] transition-all duration-300 transform hover:scale-105"
                         >
-                            Start For Free
+                            Train Your Voice (Free)
                             <ArrowRight className="w-5 h-5 ml-2" />
                         </Button>
                         <Button
                             variant="outline"
                             size="xl"
+                            onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
                             className="w-full sm:w-auto text-lg px-8 py-6 h-auto backdrop-blur-sm bg-background/50 hover:bg-background/80 transform hover:scale-105 transition-all"
                         >
-                            <PlayCircle className="w-5 h-5 mr-2" />
-                            Watch Demo
+                            How Authrax Works
                         </Button>
                     </div>
                 </div>

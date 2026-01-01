@@ -155,11 +155,11 @@ exports.generatePost = functions.runWith({
             change_request_instructions: changeRequest || null
         };
         functions.logger.info("Sending request to n8n webhook", {
-            url: "https://authrax.app.n8n.cloud/webhook-test/6fcfe924-f435-4811-9131-b509cc211e77",
+            url: "https://authrax.app.n8n.cloud/webhook/6fcfe924-f435-4811-9131-b509cc211e77",
             payload: webhookPayload
         });
         // 4. Call n8n Webhook
-        const webhookUrl = "https://authrax.app.n8n.cloud/webhook-test/6fcfe924-f435-4811-9131-b509cc211e77";
+        const webhookUrl = "https://authrax.app.n8n.cloud/webhook/6fcfe924-f435-4811-9131-b509cc211e77";
         try {
             const response = await axios_1.default.post(webhookUrl, webhookPayload, {
                 headers: {

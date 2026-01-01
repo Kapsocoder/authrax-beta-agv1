@@ -1,19 +1,22 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 // Components
 import { Hero } from "@/components/landing/Hero";
 import { SocialProof } from "@/components/landing/SocialProof";
 import { Features } from "@/components/landing/Features";
+import { BrandDNA } from "@/components/landing/BrandDNA";
 import { HowItWorks } from "@/components/landing/HowItWorks";
+import { TrustAudience } from "@/components/landing/TrustAudience";
 import { Pricing } from "@/components/landing/Pricing";
 import { FAQ } from "@/components/landing/FAQ";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Index() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -40,17 +43,43 @@ export default function Index() {
             <span className="text-xl font-bold text-foreground">Authrax</span>
           </div>
 
+          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
+            <button onClick={() => navigate("/why")} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Why Authrax</button>
             <button onClick={() => scrollToSection("features")} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Features</button>
             <button onClick={() => scrollToSection("how-it-works")} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">How it works</button>
             <button onClick={() => scrollToSection("pricing")} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Pricing</button>
           </div>
 
-          <Button variant="outline" size="sm" onClick={() => navigate("/auth")}>
-            Sign In
-          </Button>
+          <div className="hidden md:block">
+            <Button variant="outline" size="sm" onClick={() => navigate("/auth")}>
+              Sign In
+            </Button>
+          </div>
+
+          {/* Mobile Menu Toggle */}
+          <div className="md:hidden flex items-center">
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-foreground p-2">
+              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
         </div>
       </nav>
+
+      {/* Mobile Navigation Overlay */}
+      {isMenuOpen && (
+        <div className="fixed inset-0 z-40 bg-background/95 backdrop-blur-md pt-24 px-6 md:hidden">
+          <div className="flex flex-col gap-6 text-xl">
+            <button onClick={() => navigate("/why")} className="text-left font-medium text-foreground py-2 border-b border-border/10">Why Authrax</button>
+            <button onClick={() => { scrollToSection("features"); setIsMenuOpen(false); }} className="text-left font-medium text-foreground py-2 border-b border-border/10">Features</button>
+            <button onClick={() => { scrollToSection("how-it-works"); setIsMenuOpen(false); }} className="text-left font-medium text-foreground py-2 border-b border-border/10">How it works</button>
+            <button onClick={() => { scrollToSection("pricing"); setIsMenuOpen(false); }} className="text-left font-medium text-foreground py-2 border-b border-border/10">Pricing</button>
+            <Button className="w-full mt-4" size="lg" onClick={() => navigate("/auth")}>
+              Sign In
+            </Button>
+          </div>
+        </div>
+      )}
 
       <main>
         <Hero />
@@ -58,12 +87,30 @@ export default function Index() {
         <div id="features">
           <Features />
         </div>
+        <BrandDNA />
         <div id="how-it-works">
           <HowItWorks />
         </div>
+        <TrustAudience />
         <div id="pricing">
           <Pricing />
         </div>
+
+        {/* Final CTA Section */}
+        <section className="py-24 bg-background text-center px-4">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-bold mb-6">Be Intentional About How You Show Up.</h2>
+            <p className="text-xl text-muted-foreground mb-10 leading-relaxed">
+              Your reputation is forming whether you post or not.
+              <br />
+              Authrax helps ensure it reflects your true standard.
+            </p>
+            <Button size="xl" onClick={() => navigate("/auth")} className="text-lg px-8 py-6 h-auto">
+              Start Your Free Trial
+            </Button>
+          </div>
+        </section>
+
         <FAQ />
       </main>
 
