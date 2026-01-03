@@ -58,6 +58,12 @@ service cloud.firestore {
       allow write: if false; // Only admin (via backend or console)
     }
     
+    // Waitlist collection (Public write, No read/update/delete)
+    match /waitlist_entries/{entryId} {
+        allow create: if true;
+        allow read, update, delete: if false;
+    }
+
     // Trending Cache (Global read, backend write)
     match /trending_cache/{cacheId} {
         allow read: if isAuthenticated();

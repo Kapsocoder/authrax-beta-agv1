@@ -66,6 +66,7 @@ __exportStar(require("./recommendations"), exports);
 __exportStar(require("./media"), exports);
 __exportStar(require("./extraction"), exports);
 __exportStar(require("./payment"), exports);
+__exportStar(require("./users"), exports);
 // Legacy exports (retained for compatibility if needed, but directed to new modules)
 const linkedin = __importStar(require("./linkedin"));
 const analyze = __importStar(require("./analyze_voice"));

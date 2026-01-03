@@ -1,4 +1,5 @@
 import { Mic, PenSquare, Sparkles, Wifi } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 export const MobilePreview = () => {
     return (
@@ -20,8 +21,8 @@ export const MobilePreview = () => {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6 pt-2">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-                            <Sparkles className="w-4 h-4 text-white" />
+                        <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-glow overflow-hidden">
+                            <img src={logo} alt="Authrax Logo" className="w-full h-full object-cover p-0.5" />
                         </div>
                         <span className="font-bold text-lg">Authrax</span>
                     </div>

@@ -18,7 +18,10 @@ import {
   MessageCircle,
   ExternalLink,
   Loader2,
-  Lightbulb
+  Lightbulb,
+  LogOut,
+  User,
+  Settings
 } from "lucide-react";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { Post } from "@/hooks/usePosts";
@@ -44,6 +47,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -297,13 +309,53 @@ export default function Dashboard() {
     <AppLayout onLogout={handleLogout}>
       <div className="p-4 md:p-8 max-w-6xl mx-auto animate-fade-in">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-1">
-            {greeting}, {userName}! 👋
-          </h1>
-          <p className="text-muted-foreground">
-            Let's build your personal brand today
-          </p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-1">
+              {greeting}, {userName}! 👋
+            </h1>
+            <p className="text-muted-foreground">
+              Let's build your personal brand today
+            </p>
+          </div>
+
+          {/* Profile Dropdown (Mobile visible mainly, but good for Desktop too) */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 overflow-hidden hover:opacity-80 transition-opacity">
+                <Avatar className="h-10 w-10 border border-border shadow-sm">
+                  <AvatarImage src={user?.user_metadata?.avatar_url} alt={userName} />
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-medium">
+                    {userName?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{profile?.full_name || userName}</p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user?.email}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/profile")}>
+                <User className="mr-2 h-4 w-4" />
+                <span>Profile</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/settings")}>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* What's on your mind? - Capture Options */}

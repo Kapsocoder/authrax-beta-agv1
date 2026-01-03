@@ -41,6 +41,7 @@ export * from './recommendations';
 export * from './media';
 export * from './extraction';
 export * from './payment';
+export * from './users';
 
 // Legacy exports (retained for compatibility if needed, but directed to new modules)
 import * as linkedin from './linkedin';

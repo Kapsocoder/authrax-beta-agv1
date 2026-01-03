@@ -92,7 +92,7 @@ export default function Drafts() {
 
   return (
     <AppLayout onLogout={signOut}>
-      <div className="p-4 md:p-8 max-w-5xl mx-auto animate-fade-in">
+      <div className="p-4 md:p-8 max-w-5xl mx-auto w-full animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -125,7 +125,7 @@ export default function Drafts() {
 
         {/* Drafts Grid */}
         {isLoading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
               <Card key={i} className="bg-card border-border animate-pulse">
                 <CardContent className="p-5">
@@ -151,13 +151,13 @@ export default function Drafts() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {drafts.map((draft) => {
               const ContentIcon = getContentTypeIcon(draft);
               return (
                 <Card
                   key={draft.id}
-                  className="bg-card border-border hover:border-primary/50 transition-all hover:shadow-md group"
+                  className="bg-card border-border hover:border-primary/50 transition-all hover:shadow-md group min-w-0 w-full overflow-hidden"
                 >
                   <CardContent className="p-5">
                     {/* Header */}
@@ -172,7 +172,7 @@ export default function Drafts() {
                     </div>
 
                     {/* Content Preview */}
-                    <p className="text-sm text-foreground line-clamp-4 mb-4 min-h-[80px]">
+                    <p className="text-sm text-foreground line-clamp-4 mb-4 min-h-[80px] break-words">
                       {draft.content || draft.input_context || draft.user_instructions || draft.source_url || "Empty draft..."}
                     </p>
 

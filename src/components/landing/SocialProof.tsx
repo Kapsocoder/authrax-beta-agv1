@@ -3,7 +3,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 
 gsap.registerPlugin(useGSAP);
-const companies = ["TechFlow", "DevScale", "CreatorLabs", "GrowthAI", "SalesForce", "IndieHacker", "FutureWorks"];
+const companies = ["Banking", "Real Estate", "Digital Marketing", "Healthcare", "Education", "Retail", "Media", "Entertainment"];
 
 export const SocialProof = () => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -23,7 +23,7 @@ export const SocialProof = () => {
         <section ref={containerRef} className="py-10 border-y border-white/5 bg-white/5 backdrop-blur-sm overflow-hidden">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-8">
                 <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase">
-                    Trusted by professionals at innovative companies
+                    Trusted by professionals across Industries and Sectors
                 </p>
             </div>
 

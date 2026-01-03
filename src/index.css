@@ -16,7 +16,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 25% 10%;
 
-    --primary: 173 80% 40%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 15% 92%;
@@ -33,22 +33,22 @@
 
     --border: 220 15% 88%;
     --input: 220 15% 88%;
-    --ring: 173 80% 40%;
+    --ring: 217 91% 60%;
 
     --radius: 0.75rem;
 
     --success: 142 70% 45%;
     --success-foreground: 0 0% 100%;
-    
+
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(173, 80%, 40%) 0%, hsl(190, 75%, 45%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(270, 70%, 60%) 100%);
     --gradient-accent: linear-gradient(135deg, hsl(280, 65%, 60%) 0%, hsl(320, 70%, 55%) 100%);
     --gradient-hero: linear-gradient(135deg, hsl(220, 25%, 8%) 0%, hsl(220, 30%, 12%) 50%, hsl(220, 25%, 8%) 100%);
     --gradient-card: linear-gradient(145deg, hsl(220, 25%, 12%) 0%, hsl(220, 30%, 8%) 100%);
-    
-    --shadow-glow: 0 0 40px hsl(173 80% 40% / 0.15);
+
+    --shadow-glow: 0 0 40px hsl(217 91% 60% / 0.25);
     --shadow-card: 0 4px 24px hsl(220 25% 10% / 0.08);
     --shadow-elevated: 0 8px 32px hsl(220 25% 10% / 0.12);
   }
@@ -63,7 +63,7 @@
     --popover: 220 25% 10%;
     --popover-foreground: 220 15% 95%;
 
-    --primary: 173 80% 45%;
+    --primary: 217 91% 60%;
     --primary-foreground: 220 25% 6%;
 
     --secondary: 220 20% 16%;
@@ -80,15 +80,15 @@
 
     --border: 220 20% 18%;
     --input: 220 20% 18%;
-    --ring: 173 80% 45%;
+    --ring: 217 91% 60%;
 
     --success: 142 70% 50%;
     --success-foreground: 220 25% 6%;
-    
+
     --warning: 38 92% 55%;
     --warning-foreground: 220 25% 6%;
 
-    --shadow-glow: 0 0 60px hsl(173 80% 45% / 0.2);
+    --shadow-glow: 0 0 60px hsl(217 91% 60% / 0.3);
     --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.3);
     --shadow-elevated: 0 8px 32px hsl(0 0% 0% / 0.4);
   }
@@ -108,7 +108,9 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
-  code, pre, .font-mono {
+  code,
+  pre,
+  .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
 }
@@ -178,23 +180,49 @@
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 @keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
 }
 
 @keyframes slide-up {
-  0% { opacity: 0; transform: translateY(20px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes fade-in {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
 
 /* LinkedIn Preview Styles */

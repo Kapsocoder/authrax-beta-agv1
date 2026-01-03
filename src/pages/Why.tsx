@@ -75,8 +75,12 @@ export default function Why() {
             </main>
 
             {/* Footer (Minimal) */}
-            <footer className="py-8 bg-background border-t border-border/10 text-center text-sm text-muted-foreground">
+            <footer className="py-8 bg-background border-t border-border/10 text-center text-sm text-muted-foreground flex flex-col gap-2">
                 <p>© 2025 Authrax. Built for credibility-first professionals.</p>
+                <div className="flex justify-center gap-4">
+                    <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
+                    <a href="/terms" className="hover:text-foreground transition-colors">Terms of Use</a>
+                </div>
             </footer>
         </div>
     );

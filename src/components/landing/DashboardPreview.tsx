@@ -25,6 +25,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import logo from "@/assets/logo.png";
 
 // Static Sidebar for Preview
 const PreviewSidebar = () => {
@@ -41,8 +42,8 @@ const PreviewSidebar = () => {
     return (
         <aside className="hidden md:flex flex-col w-64 h-full bg-card border-r border-border p-4 absolute left-0 top-0 bottom-0 z-20">
             <div className="flex items-center gap-3 px-2 mb-8">
-                <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center shadow-glow">
-                    <Sparkles className="w-4 h-4 text-primary-foreground" />
+                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-glow overflow-hidden">
+                    <img src={logo} alt="Authrax Logo" className="w-full h-full object-cover p-0.5" />
                 </div>
                 <div>
                     <div className="flex items-center gap-2">
@@ -57,8 +58,8 @@ const PreviewSidebar = () => {
                     <div
                         key={item.label}
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${item.active
-                                ? "bg-primary/10 text-primary font-medium"
-                                : "text-muted-foreground"
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "text-muted-foreground"
                             }`}
                     >
                         <item.icon className="w-4 h-4" />
@@ -100,7 +101,7 @@ export const DashboardPreview = () => {
             <PreviewSidebar />
 
             {/* Main Content Area */}
-            <main className="flex-1 md:ml-64 p-6 h-full overflow-hidden relative">
+            <main className="flex-1 md:ml-64 p-4 md:p-6 h-full overflow-hidden relative">
                 {/* Fake Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
@@ -121,7 +122,7 @@ export const DashboardPreview = () => {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-4 gap-4 mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     {stats.map((stat) => (
                         <div key={stat.label} className="bg-card border border-border p-4 rounded-xl shadow-sm">
                             <div className="flex justify-between items-start mb-2">
@@ -134,8 +135,8 @@ export const DashboardPreview = () => {
                 </div>
 
                 {/* Content Layout */}
-                <div className="grid grid-cols-3 gap-6">
-                    <div className="col-span-2 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="col-span-1 md:col-span-2 space-y-6">
                         {/* Capture Card */}
                         <div className="bg-card border border-border rounded-xl p-5">
                             <div className="flex items-center gap-2 mb-4 font-semibold">

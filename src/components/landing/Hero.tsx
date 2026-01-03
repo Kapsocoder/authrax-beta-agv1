@@ -144,11 +144,10 @@ export const Hero = () => {
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
                         <Button
                             size="xl"
-                            // onClick={() => navigate("/auth")} // Keep existing nav logic or update
-                            onClick={() => navigate("/auth")}
+                            onClick={() => navigate("/waitlist")}
                             className="w-full sm:w-auto text-lg px-8 py-6 h-auto shadow-[0_0_30px_-10px_rgba(var(--primary),0.5)] hover:shadow-[0_0_50px_-10px_rgba(var(--primary),0.6)] transition-all duration-300 transform hover:scale-105"
                         >
-                            Train Your Voice (Free)
+                            Join Private Beta
                             <ArrowRight className="w-5 h-5 ml-2" />
                         </Button>
                         <Button
@@ -167,15 +166,15 @@ export const Hero = () => {
                     <div className="relative">
                         {/* Desktop View */}
                         <div ref={dashboardRef} className="rounded-xl bg-gradient-to-b from-border/50 to-border/10 p-2 backdrop-blur-xl border border-white/10 shadow-2xl relative z-10 transform-style-3d will-change-transform">
-                            <div className="rounded-lg overflow-hidden bg-background aspect-[16/10] border border-border/50 relative group shadow-inner">
+                            <div className="rounded-lg overflow-hidden bg-background aspect-auto md:aspect-[16/10] border border-border/50 relative group shadow-inner">
                                 <DashboardPreview />
                             </div>
                         </div>
 
-                        {/* Mobile View - Absolute Positioned */}
+                        {/* Mobile View - Responsive Positioning */}
                         <div
                             ref={mobileRef}
-                            className="absolute -right-4 -bottom-12 md:-right-12 md:-bottom-20 z-20 hidden md:block will-change-transform"
+                            className="relative mt-12 w-full flex justify-center md:w-auto md:block md:mx-0 md:absolute md:mt-0 md:-right-12 md:-bottom-20 z-20 will-change-transform origin-center md:origin-bottom-right"
                         >
                             <div className="transform hover:rotate-0 transition-transform duration-500">
                                 <MobilePreview />
