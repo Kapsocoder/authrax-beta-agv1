@@ -1,4 +1,4 @@
-import { Home, PenSquare, TrendingUp, FileText, User } from "lucide-react";
+import { Home, PenSquare, TrendingUp, FileText, Lightbulb } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useNavigationGuard } from "@/contexts/NavigationGuardContext";
@@ -8,7 +8,7 @@ const navItems = [
   { icon: PenSquare, label: "Create", path: "/create" },
   { icon: FileText, label: "Drafts", path: "/drafts" },
   { icon: TrendingUp, label: "Trending", path: "/trending" },
-  { icon: User, label: "Profile", path: "/profile" },
+  { icon: Lightbulb, label: "Recommended", path: "/recommendations" },
 ];
 
 export function BottomNav() {
@@ -29,15 +29,15 @@ export function BottomNav() {
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
-          
+
           return (
             <button
               key={item.path}
               onClick={() => handleNavigation(item.path)}
               className={cn(
                 "flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-200",
-                isActive 
-                  ? "text-primary bg-primary/10" 
+                isActive
+                  ? "text-primary bg-primary/10"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
