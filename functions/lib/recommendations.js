@@ -33,7 +33,7 @@ const generative_ai_1 = require("@google/generative-ai");
 const axios_1 = __importDefault(require("axios"));
 const firebase_1 = require("./firebase");
 const genAI = new generative_ai_1.GoogleGenerativeAI(firebase_1.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 // --- Helper Functions ---
 function getTimeframeCutoff(timeframe) {
     const now = new Date();
@@ -255,7 +255,7 @@ async function generateTopicInsights(topic) {
             console.log(`Cache low for ${topic}, scraping fresh data...`);
             const [newsItems, linkedInItems] = await Promise.all([
                 fetchGoogleNews(topic),
-                fetchLinkedInPosts(topic)
+                fetchLinkedInPosts(topic) // Ensure this function doesn't fail silently
             ]);
             await Promise.all([
                 cacheTrendingItems(newsItems.slice(0, 5), 'news', topicLower),
@@ -300,14 +300,38 @@ Respond with valid JSON only:
     }
   ]
 }`;
+        console.log(`[DEBUG] Generative Model Name: ${model.model}`);
         const result = await model.generateContent({
-            contents: [{ role: "user", parts: [{ text: prompt }] }]
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+                responseMimeType: "application/json"
+            },
+            // Reduce safety settings to avoid blocking news content
+            safetySettings: [
+                {
+                    category: generative_ai_1.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                    threshold: generative_ai_1.HarmBlockThreshold.BLOCK_ONLY_HIGH
+                },
+                {
+                    category: generative_ai_1.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                    threshold: generative_ai_1.HarmBlockThreshold.BLOCK_ONLY_HIGH
+                },
+                {
+                    category: generative_ai_1.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                    threshold: generative_ai_1.HarmBlockThreshold.BLOCK_ONLY_HIGH
+                },
+                {
+                    category: generative_ai_1.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                    threshold: generative_ai_1.HarmBlockThreshold.BLOCK_ONLY_HIGH
+                }
+            ]
         });
         const response = await result.response;
-        let text = response.text();
-        text = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-        const json = JSON.parse(text);
-        const insights = json.insights || [];
+        const text = response.text();
+        // Clean up markdown just in case, though responseMimeType handles most
+        const cleanedText = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        const json = JSON.parse(cleanedText);
+        const insights = json.insights || (Array.isArray(json) ? json : []);
         if (insights.length > 0) {
             await firebase_1.db.collection("topic_insights").doc(topic.toLowerCase()).set({
                 topic: topic.toLowerCase(),
@@ -319,7 +343,21 @@ Respond with valid JSON only:
         return insights;
     }
     catch (e) {
-        console.error(`Failed to generate insights for topic ${topic}`, e);
+        console.error(`Failed to generate insights for topic ${topic}. Error: ${e.message}`, JSON.stringify(e, null, 2));
+        // Diagnostic: List available models to find the correct name
+        try {
+            // We need to use a temporary model client to list models or the genAI instance
+            // The SDK doesn't have a direct 'listModels' on genAI instance in older versions, 
+            // but let's try the key valid check or just log what we can.
+            // Actually, the error message itself suggests calling ListModels.
+            // We can't easily do it without importing the ModelService or similar often.
+            // Let's try to just log that we need to check the model list documentation.
+            console.log("Attempting to list models intentionally failed - functionality complex to add inline.");
+        }
+        catch (listErr) {
+            console.error("Failed to list models", listErr);
+        }
+        // If 404, it means model name is wrong. 
         return [];
     }
 }

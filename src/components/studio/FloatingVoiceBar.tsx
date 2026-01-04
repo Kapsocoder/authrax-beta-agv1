@@ -154,7 +154,7 @@ export function FloatingVoiceBar({ onTranscriptUpdate, autoStart = true, transcr
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 p-4 glass-strong border-t border-border/50 safe-area-bottom z-50">
+    <div className="fixed bottom-0 left-0 right-0 p-4 glass-strong border-t border-border/50 safe-area-bottom z-[100]">
       <div className="max-w-4xl mx-auto">
         {/* Interim text display */}
         {interimText && (
