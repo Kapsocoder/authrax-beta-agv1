@@ -335,13 +335,14 @@ export default function Trending() {
                       <CardContent className="pt-4">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <Badge variant="outline" className="mb-2">
-                              r/{post.subreddit}
-                            </Badge>
+                            <div className="flex gap-2 mb-2">
+                              {post.topic && <Badge variant="secondary">{post.topic}</Badge>}
+                              <Badge variant="outline">r/{post.subreddit}</Badge>
+                            </div>
                             <h3 className="font-medium text-foreground line-clamp-2 mb-2">
                               {post.title}
                             </h3>
-                            {post.selftext && (
+                            {(post.selftext && post.selftext !== post.title) && (
                               <p className="text-sm text-muted-foreground line-clamp-2">
                                 {post.selftext}
                               </p>
@@ -394,15 +395,18 @@ export default function Trending() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2">
+                              {news.topic && <Badge variant="secondary">{news.topic}</Badge>}
                               <Badge variant="secondary">{news.source}</Badge>
                               <Badge variant="outline">{news.category}</Badge>
                             </div>
                             <h3 className="font-medium text-foreground line-clamp-2 mb-2">
                               {news.title}
                             </h3>
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {news.description}
-                            </p>
+                            {(news.description && news.description !== news.title) && (
+                              <p className="text-sm text-muted-foreground line-clamp-2">
+                                {news.description}
+                              </p>
+                            )}
                           </div>
                           <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                         </div>
@@ -434,6 +438,7 @@ export default function Trending() {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
+              {selectedPost?.topic && <Badge variant="secondary">{selectedPost.topic}</Badge>}
               <Badge variant="outline">r/{selectedPost?.subreddit}</Badge>
               Trending Discussion
             </DialogTitle>
@@ -443,7 +448,7 @@ export default function Trending() {
             <div className="space-y-4">
               <div className="bg-secondary/50 rounded-lg p-4">
                 <h3 className="font-semibold text-lg mb-2">{selectedPost.title}</h3>
-                {selectedPost.selftext && (
+                {(selectedPost?.selftext && selectedPost?.selftext !== selectedPost?.title) && (
                   <p className="text-muted-foreground whitespace-pre-wrap">
                     {selectedPost.selftext}
                   </p>
@@ -471,7 +476,7 @@ export default function Trending() {
                   onClick={() => window.open(selectedPost.permalink, "_blank")}
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
-                  View on Reddit
+                  Read at Source
                 </Button>
               </div>
             </div>

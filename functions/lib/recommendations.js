@@ -142,7 +142,7 @@ async function fetchRedditPosts(topics, timeframe) {
                         continue;
                     if (new Date(post.created_utc * 1000) < cutoff)
                         continue;
-                    posts.push(formatRedditPost(post));
+                    posts.push(Object.assign(Object.assign({}, formatRedditPost(post)), { topic: subreddit }));
                 }
             }
             catch (e) {
@@ -171,10 +171,13 @@ async function fetchRedditPosts(topics, timeframe) {
         for (const topic of topics.slice(0, 5)) {
             try {
                 const encodedTopic = encodeURIComponent(topic);
-                const response = await fetch(`https://www.reddit.com/search.json?q=${encodedTopic}&sort=top&t=${redditTimeFilter}&limit=10`, { headers: { "User-Agent": "AuthraxBot/1.0" } });
-                if (!response.ok)
+                const response = await axios_1.default.get(`https://www.reddit.com/search.json?q=${encodedTopic}&sort=top&t=${redditTimeFilter}&limit=10`, {
+                    headers: { "User-Agent": "AuthraxBot/1.0" },
+                    timeout: 10000
+                });
+                if (response.status !== 200)
                     continue;
-                const data = await response.json();
+                const data = response.data;
                 const children = ((_a = data === null || data === void 0 ? void 0 : data.data) === null || _a === void 0 ? void 0 : _a.children) || [];
                 for (const child of children) {
                     const post = child.data;
@@ -183,7 +186,7 @@ async function fetchRedditPosts(topics, timeframe) {
                     const postDate = new Date(post.created_utc * 1000);
                     if (postDate < cutoff)
                         continue;
-                    posts.push(formatRedditPost(post));
+                    posts.push(Object.assign(Object.assign({}, formatRedditPost(post)), { topic }));
                 }
             }
             catch (error) {
@@ -506,7 +509,8 @@ exports.fetchTrending = functions.runWith({
                                 description: item.description,
                                 pubDate: item.published_at,
                                 source: item.source_name,
-                                category: item.category
+                                category: item.category,
+                                topic: item.topic // Add topic from cache
                             });
                         }
                         else if (item.item_type === 'post') {
@@ -519,7 +523,8 @@ exports.fetchTrending = functions.runWith({
                                 author: item.author,
                                 createdUtc: new Date(item.published_at).getTime() / 1000,
                                 selftext: item.description,
-                                permalink: item.source_url
+                                permalink: item.source_url,
+                                topic: item.topic // Add topic from cache
                             });
                         }
                     }
@@ -532,13 +537,19 @@ exports.fetchTrending = functions.runWith({
     if (!useCache) {
         if (type === "all" || type === "news") {
             if (effectiveTopics.length > 0) {
-                const newsPromises = effectiveTopics.slice(0, 5).map((topic) => fetchGoogleNews(topic));
+                const newsPromises = effectiveTopics.slice(0, 5).map(async (topic) => {
+                    const items = await fetchGoogleNews(topic);
+                    return items.map(i => (Object.assign(Object.assign({}, i), { topic })));
+                });
                 const newsResults = await Promise.all(newsPromises);
                 news = newsResults.flat();
             }
             else {
                 const defaultTopics = ["Startup", "Technology", "Business"];
-                const newsPromises = defaultTopics.map((topic) => fetchGoogleNews(topic));
+                const newsPromises = defaultTopics.map(async (topic) => {
+                    const items = await fetchGoogleNews(topic);
+                    return items.map(i => (Object.assign(Object.assign({}, i), { topic })));
+                });
                 const newsResults = await Promise.all(newsPromises);
                 news = newsResults.flat();
             }
@@ -554,7 +565,10 @@ exports.fetchTrending = functions.runWith({
         if (type === "all" || type === "posts") {
             let linkedInPosts = [];
             if (effectiveTopics.length > 0) {
-                const linkedInPromises = effectiveTopics.slice(0, 3).map((topic) => fetchLinkedInPosts(topic));
+                const linkedInPromises = effectiveTopics.slice(0, 3).map(async (topic) => {
+                    const items = await fetchLinkedInPosts(topic);
+                    return items.map(i => (Object.assign(Object.assign({}, i), { topic })));
+                });
                 const linkedInResults = await Promise.all(linkedInPromises);
                 const cutoff = getTimeframeCutoff(timeframe);
                 linkedInPosts = linkedInResults.flat().filter(post => {

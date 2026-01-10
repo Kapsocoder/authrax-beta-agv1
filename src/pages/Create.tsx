@@ -1059,7 +1059,10 @@ export default function Create() {
 
               {/* Trending Templates */}
               {!selectedTemplate && (
-                <TrendingTemplates onSelectTemplate={handleTemplatePreview} />
+                <TrendingTemplates
+                  onSelectTemplate={handleTemplatePreview}
+                  maxItems={3}
+                />
               )}
             </>
           )}
@@ -1345,9 +1348,19 @@ export default function Create() {
                     <LayoutTemplate className="w-4 h-4 text-primary" />
                     Selected Template
                   </span>
-                  <Button variant="ghost" size="sm" onClick={() => setShowTemplateLibrary(true)}>
-                    Change
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedTemplate(null)}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      Clear
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setShowTemplateLibrary(true)}>
+                      Change
+                    </Button>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -1360,7 +1373,7 @@ export default function Create() {
           {mode && !selectedTemplate && (
             <TrendingTemplates
               onSelectTemplate={handleTemplatePreview}
-              maxItems={6}
+              maxItems={3}
               showPreviewFirst
             />
           )}

@@ -203,8 +203,8 @@ export default function Dashboard() {
 
   // Voice Score / Brand DNA Status
   const getVoiceStatus = () => {
-    if (voiceProfile?.is_trained) return "Active";
-    if (voiceProfile?.isActive) return "Active";
+    if (voiceProfile?.is_trained && voiceProfile?.isActive) return "Active";
+    if (voiceProfile?.is_trained && !voiceProfile?.isActive) return "Inactive";
     return "Analyze";
   };
 
@@ -217,7 +217,7 @@ export default function Dashboard() {
     { label: "Brand DNA", value: voiceStatus, icon: Target, path: "/profile", state: { scrollToVoice: true } },
   ];
 
-  const rawName = user?.user_metadata?.full_name || profile?.full_name || user?.email?.split('@')[0] || "there";
+  const rawName = user?.displayName || profile?.full_name || user?.email?.split('@')[0] || "there";
   const userName = useMemo(() => {
     const firstPart = rawName.split(/[ _]/)[0];
     return firstPart.charAt(0).toUpperCase() + firstPart.slice(1);
@@ -324,7 +324,7 @@ export default function Dashboard() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 overflow-hidden hover:opacity-80 transition-opacity">
                 <Avatar className="h-10 w-10 border border-border shadow-sm">
-                  <AvatarImage src={user?.user_metadata?.avatar_url} alt={userName} />
+                  <AvatarImage src={user?.photoURL || undefined} alt={userName} />
                   <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-medium">
                     {userName?.[0]}
                   </AvatarFallback>
@@ -467,6 +467,7 @@ export default function Dashboard() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1 mb-1">
+                              {news.topic && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{news.topic}</Badge>}
                               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{news.source}</Badge>
                             </div>
                             <h4 className="text-sm font-medium text-foreground line-clamp-2">{news.title}</h4>
@@ -507,7 +508,10 @@ export default function Dashboard() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 mb-1">r/{post.subreddit}</Badge>
+                            <div className="flex gap-1 mb-1">
+                              {post.topic && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{post.topic}</Badge>}
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">r/{post.subreddit}</Badge>
+                            </div>
                             <h4 className="text-sm font-medium text-foreground line-clamp-2">{post.title}</h4>
                             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                               <span>↑ {post.score}</span>

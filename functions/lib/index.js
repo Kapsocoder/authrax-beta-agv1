@@ -76,7 +76,7 @@ exports.handleLinkedInCallback = linkedin.handleLinkedInCallback;
 exports.publishToLinkedIn = linkedin.publishToLinkedIn;
 // Export analyzeVoice as onRequest to handle manual CORS
 exports.analyzeVoice = functions.runWith({
-    timeoutSeconds: 60,
+    timeoutSeconds: 300,
     memory: "1GB"
 }).https.onRequest(analyze.analyzeVoiceHandler);
 __exportStar(require("./n8n_handler"), exports);

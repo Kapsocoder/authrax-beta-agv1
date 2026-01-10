@@ -109,28 +109,15 @@ export function useRecommendedPosts() {
 
 
       try {
-        const token = await user.getIdToken();
-        const response = await fetch("https://us-central1-authrax-beta-lv1.cloudfunctions.net/generateRecommendations", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            userId: user.uid,
-            topics: activeTopics,
-            forceRefresh,
-          })
+        const generateRecommendationsFn = httpsCallable(functions, 'generateRecommendations');
+        const result = await generateRecommendationsFn({
+          userId: user.uid,
+          topics: activeTopics,
+          forceRefresh,
         });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `Request failed with status ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        return data as any;
+        const data = result.data as any;
+        return data;
       } catch (err) {
         console.error("generateRecommendations: Function call failed", err);
         throw err;

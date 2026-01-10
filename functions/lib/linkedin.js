@@ -44,7 +44,7 @@ exports.getLinkedInAuthUrl = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("failed-precondition", "LinkedIn configuration missing or invalid redirect URI.");
     }
     // Security: Validate the redirect URI matches our allowed domains
-    const allowedDomains = ["localhost", "authrax-beta-lv1.web.app", "authrax-beta-lv1.firebaseapp.com"];
+    const allowedDomains = ["localhost", "authrax-beta-lv1.web.app", "authrax-beta-lv1.firebaseapp.com", "authrax.com", "www.authrax.com"];
     const matchesAllowed = allowedDomains.some(domain => clientRedirectUri.includes(domain));
     if (!matchesAllowed) {
         throw new functions.https.HttpsError("invalid-argument", "Invalid redirect URI domain.");

@@ -103,3 +103,14 @@ To build and deploy the entire project:
 npm run build
 firebase deploy
 ```
+
+## Development Workflow
+
+We use a safe branching strategy and local emulators to prevent breaking production.
+
+-   **Code**: Work on the `dev` branch.
+-   **Run Safely**: `npm run dev:emulators` (Starts Backend Emulators + Frontend).
+-   **Safe Webhooks**: We use `.env.local` to point to Test Webhooks during development.
+
+👉 **Read the full guide:** [WORKFLOW.md](./WORKFLOW.md)
+

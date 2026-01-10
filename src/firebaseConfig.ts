@@ -3,7 +3,11 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import { getFunctions } from "firebase/functions";
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
+import { getAnalytics } from "firebase/analytics";
+import { connectAuthEmulator } from "firebase/auth";
+import { connectFirestoreEmulator } from "firebase/firestore";
+import { connectStorageEmulator } from "firebase/storage";
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,6 +16,7 @@ const firebaseConfig = {
     storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
     messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
     appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
@@ -22,19 +27,17 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
+export const analytics = getAnalytics(app);
 
 // Connect to emulators if strictly on localhost
 // Connect to emulators if strictly on localhost
-/*
 if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
-    // Note: This connects ONLY Cloud Functions to the local emulator.
-    // Auth and Firestore will still use Production unless configured otherwise.
-    // This allows testing the "Generate Image" fix locally while keeping data in prod.
-    import("firebase/functions").then(({ connectFunctionsEmulator }) => {
-        connectFunctionsEmulator(functions, "localhost", 5001);
-        console.log("🔥 Connected to Local Cloud Functions Emulator");
-    });
+    // Connect to Emulators
+    connectAuthEmulator(auth, "http://localhost:9099");
+    connectFirestoreEmulator(db, "localhost", 8080);
+    connectFunctionsEmulator(functions, "localhost", 5001);
+    connectStorageEmulator(storage, "localhost", 9199);
+    console.log("🔥 Connected to Firebase Emulators (Auth, Firestore, Functions, Storage)");
 }
-*/
 
 export default app;

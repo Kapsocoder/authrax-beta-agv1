@@ -8,7 +8,9 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:emulators": "firebase emulators:start --import=./emulator-data --export-on-exit=./emulator-data",
+    "db:refresh": "node scripts/seed-from-prod.cjs && node scripts/fix-main-user.cjs"
   },
   "dependencies": {
     "@capacitor/cli": "^8.0.0",

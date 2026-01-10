@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { doc, getDoc, setDoc, collection, query, where, limit, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, limit, getDocs, orderBy } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/firebaseConfig";
 import { useAuth } from "./useAuth";
@@ -71,19 +71,32 @@ export function useVoiceProfile() {
 
       if (bestPostsSnap.exists()) {
         bestPostsData = bestPostsSnap.data();
-        draftPosts = bestPostsData.sample_posts || [];
+        // Merge sample_posts and last_analyzed_posts, removing duplicates
+        const samples = bestPostsData.sample_posts || [];
+        const analyzed = bestPostsData.last_analyzed_posts || [];
+        // Use Set for unique strings
+        draftPosts = Array.from(new Set([...samples, ...analyzed]));
       } else {
         // Fallback: Check 'default' doc if BestPostsFromUser doesn't exist yet
         const defaultRef = doc(db, "users", user.uid, "voice_profiles", "default");
         const defaultSnap = await getDoc(defaultRef);
         if (defaultSnap.exists()) {
-          draftPosts = defaultSnap.data().sample_posts || [];
+          const data = defaultSnap.data();
+          const samples = data.sample_posts || [];
+          const analyzed = data.last_analyzed_posts || [];
+          draftPosts = Array.from(new Set([...samples, ...analyzed]));
         }
       }
 
-      // 2. Query the active profile for DNA stats
+      // 2. Query the LATEST trained profile (regardless of Active status)
+      // We want to be able to toggle it on/off, so we need to fetch it even if inactive.
       const collectionRef = collection(db, "users", user.uid, "voice_profiles");
-      const q = query(collectionRef, where("isActive", "==", true), limit(1));
+      const q = query(
+        collectionRef,
+        where("is_trained", "==", true),
+        orderBy("created_at", "desc"),
+        limit(1)
+      );
       const querySnapshot = await getDocs(q);
 
       let activeProfileData: any = {};
@@ -120,10 +133,9 @@ export function useVoiceProfile() {
       // 3. Merge: Return ONE object. 
       // draft_posts = what the user is editing (from BestPostsFromUser)
       // sample_posts = what the active profile was trained on. source: Active Profile > BestPosts snapshot > Empty
-      const lastAnalyzedPosts = bestPostsData.last_analyzed_posts || [];
       const effectiveSamplePosts = (activeProfileData.sample_posts && activeProfileData.sample_posts.length > 0)
         ? activeProfileData.sample_posts
-        : lastAnalyzedPosts;
+        : draftPosts; // Fallback to the merged draft posts if active profile has none
 
       return {
         id: activeProfileId,

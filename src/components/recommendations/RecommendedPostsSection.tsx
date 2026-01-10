@@ -31,7 +31,10 @@ export function RecommendedPostsSection() {
     });
   };
 
-  const displayedRecommendations = recommendations.slice(0, 3);
+  const uniqueRecommendations = recommendations.filter((post, index, self) =>
+    index === self.findIndex((t) => t.title === post.title)
+  );
+  const displayedRecommendations = uniqueRecommendations.slice(0, 3);
 
   const handleUsePost = (post: RecommendedPost) => {
     navigate("/create", {
@@ -40,6 +43,8 @@ export function RecommendedPostsSection() {
         prefilledContent: post.content,
         recommendedPostId: post.id,
         title: post.title,
+        sourceUrl: post.source_url,
+        inputContext: post.source_title ? `Source: ${post.source_title}` : undefined
       },
     });
   };

@@ -10,6 +10,9 @@ import { useVoiceProfile } from "@/hooks/useVoiceProfile";
 import { toast } from "sonner";
 import { BrandDNAModal } from "./BrandDNAModal";
 
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+
 export interface VoiceTrainingSectionRef {
     expand: () => void;
 }
@@ -40,6 +43,20 @@ export const VoiceTrainingSection = forwardRef<VoiceTrainingSectionRef>(function
 
     // Helper to check if profile is truly trained/active
     const isProfileActive = voiceProfile?.is_trained || voiceProfile?.isActive;
+
+    const handleToggleActive = async (checked: boolean) => {
+        // Stop propagation is handled by the wrapper div's onClick
+        if (!voiceProfile?.is_trained && checked) {
+            toast.error("You must train your brand voice before enabling it.");
+            return;
+        }
+
+        try {
+            await updateVoiceProfile.mutateAsync({ isActive: checked });
+        } catch (error) {
+            // Error handled in hook
+        }
+    };
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -223,7 +240,23 @@ export const VoiceTrainingSection = forwardRef<VoiceTrainingSectionRef>(function
                                     </CardDescription>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-4">
+                                {voiceProfile?.is_trained && (
+                                    <div
+                                        className="flex items-center gap-2 mr-2"
+                                        onClick={(e) => e.stopPropagation()}
+                                        title={voiceProfile.isActive ? "Brand DNA Active" : "Brand DNA Paused"}
+                                    >
+                                        <Label htmlFor="brand-dna-toggle" className="text-sm cursor-pointer font-medium text-muted-foreground">
+                                            {voiceProfile.isActive ? 'On' : 'Off'}
+                                        </Label>
+                                        <Switch
+                                            id="brand-dna-toggle"
+                                            checked={!!voiceProfile.isActive}
+                                            onCheckedChange={handleToggleActive}
+                                        />
+                                    </div>
+                                )}
                                 <div className="text-right hidden sm:block">
                                     <span className="text-2xl font-bold text-gradient-primary">{voiceScore}%</span>
                                     <p className="text-xs text-muted-foreground">Brand DNA Score</p>

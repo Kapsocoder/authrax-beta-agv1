@@ -54,7 +54,7 @@ export const publishToLinkedIn = linkedin.publishToLinkedIn;
 
 // Export analyzeVoice as onRequest to handle manual CORS
 export const analyzeVoice = functions.runWith({
-    timeoutSeconds: 60,
+    timeoutSeconds: 300,
     memory: "1GB"
 }).https.onRequest(analyze.analyzeVoiceHandler);
 

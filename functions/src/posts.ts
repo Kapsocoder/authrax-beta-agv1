@@ -61,20 +61,8 @@ export const generatePost = functions.runWith({
                     judgement_layer: profileData.judgement_layer || null,
                     system_prompt: profileData.system_prompt || null
                 };
-            } else {
-                // Fallback to 'default' if no active profile found (optional, but good for robustness)
-                const defaultProfileDoc = await voiceProfilesRef.doc('default').get();
-                if (defaultProfileDoc.exists) {
-                    const profileData = defaultProfileDoc.data();
-                    voiceProfileDetails = {
-                        belief_layer: profileData?.belief_layer || null,
-                        expression_layer: profileData?.expression_layer || null,
-                        governance_layer: profileData?.governance_layer || null,
-                        judgement_layer: profileData?.judgement_layer || null,
-                        system_prompt: profileData?.system_prompt || null
-                    };
-                }
             }
+            // Strict Mode: If no active profile, we send null. No fallback to 'default'.
         } catch (error) {
             console.error("Error fetching voice profile:", error);
             // Continue without voice profile
@@ -141,19 +129,19 @@ export const generatePost = functions.runWith({
         };
 
         functions.logger.info("Sending request to n8n webhook", {
-            url: "https://authrax.app.n8n.cloud/webhook/6fcfe924-f435-4811-9131-b509cc211e77",
+            url: process.env.N8N_GENERATE_WEBHOOK_URL || "https://n8n.authrax.com/webhook/6fcfe924-f435-4811-9131-b509cc211e77",
             payload: webhookPayload
         });
 
         // 4. Call n8n Webhook
-        const webhookUrl = "https://authrax.app.n8n.cloud/webhook/6fcfe924-f435-4811-9131-b509cc211e77";
+        const webhookUrl = process.env.N8N_GENERATE_WEBHOOK_URL || "https://n8n.authrax.com/webhook/6fcfe924-f435-4811-9131-b509cc211e77";
 
         try {
             const response = await axios.post(webhookUrl, webhookPayload, {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                timeout: 60000 // 60s timeout for n8n processing
+                timeout: 180000 // 3 minutes timeout for n8n processing
             });
 
             functions.logger.info("n8n webhook success", { status: response.status, data: response.data });

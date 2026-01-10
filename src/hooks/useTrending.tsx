@@ -9,6 +9,7 @@ export interface NewsItem {
   pubDate: string;
   source: string;
   category: string;
+  topic?: string;
 }
 
 export interface TrendingPost {
@@ -21,6 +22,7 @@ export interface TrendingPost {
   createdUtc: number;
   selftext: string;
   permalink: string;
+  topic?: string;
 }
 
 interface TrendingResponse {

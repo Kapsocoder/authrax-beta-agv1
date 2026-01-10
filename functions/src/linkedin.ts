@@ -24,7 +24,7 @@ export const getLinkedInAuthUrl = functions.https.onCall(async (data, context) =
     }
 
     // Security: Validate the redirect URI matches our allowed domains
-    const allowedDomains = ["localhost", "authrax-beta-lv1.web.app", "authrax-beta-lv1.firebaseapp.com"];
+    const allowedDomains = ["localhost", "authrax-beta-lv1.web.app", "authrax-beta-lv1.firebaseapp.com", "authrax.com", "www.authrax.com"];
     const matchesAllowed = allowedDomains.some(domain => clientRedirectUri.includes(domain));
 
     if (!matchesAllowed) {

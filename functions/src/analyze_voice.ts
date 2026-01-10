@@ -55,7 +55,7 @@ export const analyzeVoiceHandler = async (req: functions.https.Request, res: fun
 
     // 5. Send to n8n Webhook
     // TODO: Switch to Production URL when confirmed
-    const webhookUrl = "https://authrax.app.n8n.cloud/webhook/16876421-9c87-4483-9110-dbeda000d828";
+    const webhookUrl = process.env.N8N_ANALYZE_WEBHOOK_URL || "https://n8n.authrax.com/webhook/16876421-9c87-4483-9110-dbeda000d828";
 
     try {
         const response = await axios.post(webhookUrl, {
@@ -63,7 +63,7 @@ export const analyzeVoiceHandler = async (req: functions.https.Request, res: fun
             posts: posts,
             timestamp: new Date().toISOString()
         }, {
-            timeout: 10000 // 10s timeout
+            timeout: 180000 // 3 minutes timeout
         });
 
         console.log(`[AnalyzeVoice] Webhook sent. Status: ${response.status}`);
