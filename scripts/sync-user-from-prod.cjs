@@ -20,7 +20,7 @@ const localApp = admin.initializeApp({
 
 const localAuth = localApp.auth();
 
-const EMAIL = 'kapil_sabarwal@yahoo.com';
+const EMAIL = 'kapil_sabharwal@yahoo.com';
 const PASSWORD = 'password123';
 
 async function syncUser() {

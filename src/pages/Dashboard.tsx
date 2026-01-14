@@ -211,7 +211,7 @@ export default function Dashboard() {
   const voiceStatus = getVoiceStatus();
 
   const stats = [
-    { label: "Posts This Week", value: String(postsThisWeek), icon: PenSquare, path: "/drafts" },
+    { label: "Posts This Week", value: String(postsThisWeek), icon: PenSquare, path: "/published" },
     { label: "Total Impressions", value: "—", icon: TrendingUp, path: "/analytics" },
     { label: "Scheduled", value: String(scheduledCount), icon: Clock, path: "/schedule" },
     { label: "Brand DNA", value: voiceStatus, icon: Target, path: "/profile", state: { scrollToVoice: true } },
@@ -624,7 +624,7 @@ export default function Dashboard() {
                   onClick={() => window.open(selectedPost.permalink, "_blank")}
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
-                  View on Reddit
+                  Read at Source
                 </Button>
               </div>
             </div>
@@ -671,7 +671,7 @@ export default function Dashboard() {
                   onClick={() => window.open(selectedNews.link, "_blank")}
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
-                  Read Full Article
+                  Read at Source
                 </Button>
               </div>
             </div>

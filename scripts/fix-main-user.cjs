@@ -11,7 +11,9 @@ const prodApp = admin.initializeApp({
 }, 'prodApp');
 
 // 2. Initialize Local Emulator App (Destination)
-process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
+if (!process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
+}
 const localApp = admin.initializeApp({
     projectId: 'authrax-beta-lv1'
 }, 'localApp');

@@ -1,11 +1,6 @@
 import * as functions from "firebase-functions";
-// import { GoogleGenerativeAI } from "@google/generative-ai"; // Unused now
 import axios from 'axios';
-import { db, admin } from './firebase'; // Removed unused GEMINI_API_KEY
-// import { extractWebPage, extractYouTube } from './extractors'; // Unused now
-
-// const genAI = new GoogleGenerativeAI(GEMINI_API_KEY); // Unused now
-// const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" }); // Unused now
+import { db, admin } from './firebase';
 
 export const generatePost = functions.runWith({
     timeoutSeconds: 300,
@@ -62,10 +57,8 @@ export const generatePost = functions.runWith({
                     system_prompt: profileData.system_prompt || null
                 };
             }
-            // Strict Mode: If no active profile, we send null. No fallback to 'default'.
         } catch (error) {
             console.error("Error fetching voice profile:", error);
-            // Continue without voice profile
         }
 
         // 2. Fetch Template Details
@@ -84,7 +77,6 @@ export const generatePost = functions.runWith({
                         prompt: tData?.prompt
                     };
 
-                    // Increment usage count (keeping existing logic)
                     await templateDoc.ref.update({
                         usage_count: admin.firestore.FieldValue.increment(1)
                     });
@@ -95,34 +87,18 @@ export const generatePost = functions.runWith({
         }
 
         // 3. Construct Payload
-        // Determine capturedContent and URL based on type
-        // Use originalContent if passed (previewed), else prompt (for voice/draft/pdf)
-        // For URL/Video, if we didn't preview, we might just send the URL and let n8n handle extraction? 
-        // Or should we extract here? The user said "Process: ... Backend attempts to scrape".
-        // BUT the user REQUEST says "send... capturedContent, URL".
-        // If we haven't extracted yet (no preview), capturedContent might be empty or just user notes.
-        // Let's stick to the simple flow: capturedContent = prompt (extracted or user text), URL = sourceUrl.
-
-        // 3. Construct Payload per User Requirements
         const webhookPayload = {
-            // Post Information
             post_info: {
                 id: postId || null,
                 user_id: userId,
-                input_mode: type, // 'draft', 'voice', 'url', 'pdf', 'video'
-                input_context: inputContext || prompt, // Fallback to prompt if inputContext is missing
+                input_mode: type,
+                input_context: inputContext || prompt,
                 user_instructions: userInstructions || null,
                 source_url: _sourceUrl || null,
                 media_url: (mediaUrls && mediaUrls.length > 0) ? mediaUrls[0] : null
             },
-
-            // Template Information
             template_info: templateDetails || null,
-
-            // Brand DNA Information
             brand_dna: voiceProfileDetails || null,
-
-            // Legacy mappings (for safety during transition)
             is_regeneration: !!(editorContent && changeRequest),
             current_post_content: editorContent || null,
             change_request_instructions: changeRequest || null
@@ -133,15 +109,12 @@ export const generatePost = functions.runWith({
             payload: webhookPayload
         });
 
-        // 4. Call n8n Webhook
         const webhookUrl = process.env.N8N_GENERATE_WEBHOOK_URL || "https://n8n.authrax.com/webhook/6fcfe924-f435-4811-9131-b509cc211e77";
 
         try {
             const response = await axios.post(webhookUrl, webhookPayload, {
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                timeout: 180000 // 3 minutes timeout for n8n processing
+                headers: { 'Content-Type': 'application/json' },
+                timeout: 180000
             });
 
             functions.logger.info("n8n webhook success", { status: response.status, data: response.data });
@@ -166,4 +139,65 @@ export const generatePost = functions.runWith({
         functions.logger.error("Error generating post:", error);
         throw new functions.https.HttpsError('internal', error.message || "Failed to generate post");
     }
+});
+
+import { publishToLinkedInInternal } from './linkedin';
+
+// Exported logic for direct testing
+export const publishScheduledPosts = async () => {
+    const now = new Date();
+    functions.logger.info(`Starting scheduledPostPublisher at ${now.toISOString()}`);
+
+    // Query scheduled posts due now or in the past
+    // NOTE: using 'scheduled_for' as per fix
+    const snapshot = await db.collection('posts')
+        .where('status', '==', 'scheduled')
+        .where('scheduled_for', '<=', now.toISOString())
+        .get();
+
+    functions.logger.info(`Found ${snapshot.size} scheduled posts due (scan time: ${now.toISOString()})`);
+
+    if (snapshot.empty) return null;
+
+    const tasks = snapshot.docs.map(async (doc) => {
+        const post = doc.data();
+        const userId = post.user_id;
+
+        // Double check it hasn't been published in a race condition (idempotency)
+        if (post.status !== 'scheduled') return;
+
+        try {
+            console.log(`Publishing scheduled post ${doc.id} for user ${userId}`);
+
+            // Only attempt publish if connected. publishToLinkedInInternal handles the check.
+            const result = await publishToLinkedInInternal(userId, {
+                content: post.content,
+                mediaUrls: post.media_urls || (post.media_url ? [post.media_url] : [])
+            });
+
+            await doc.ref.update({
+                status: 'published',
+                published_at: new Date().toISOString(),
+                linkedin_id: result.postId,
+                error: admin.firestore.FieldValue.delete()
+            });
+            functions.logger.info(`Successfully published ${doc.id}`);
+        } catch (e: any) {
+            console.error(`Failed to publish scheduled post ${doc.id}`, e);
+            await doc.ref.update({
+                status: 'failed',
+                error_message: e.message || 'Unknown error'
+            });
+        }
+    });
+
+    await Promise.all(tasks);
+    return null;
+};
+
+export const scheduledPostPublisher = functions.runWith({
+    timeoutSeconds: 540,
+    memory: '1GB'
+}).pubsub.schedule('every 10 minutes').onRun(async (context) => {
+    return publishScheduledPosts();
 });

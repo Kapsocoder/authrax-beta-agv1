@@ -11,6 +11,7 @@ import { useUserTopics } from "@/hooks/useUserTopics";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTrending, NewsItem, TrendingPost, Timeframe, fetchTrendingData } from "@/hooks/useTrending";
 import { useProfile } from "@/hooks/useProfile";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
 import {
   Dialog,
@@ -48,6 +49,7 @@ export default function Trending() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const { checkFeatureAccess, usageCount } = useProfile();
+  const { trackTrendingArticleClicked } = useAnalytics();
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   // Get active topics for filtering
@@ -473,7 +475,10 @@ export default function Trending() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => window.open(selectedPost.permalink, "_blank")}
+                  onClick={() => {
+                    trackTrendingArticleClicked('reddit', selectedPost.title);
+                    window.open(selectedPost.permalink, "_blank");
+                  }}
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
                   Read at Source
@@ -520,10 +525,13 @@ export default function Trending() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => window.open(selectedNews.link, "_blank")}
+                  onClick={() => {
+                    trackTrendingArticleClicked(selectedNews.source, selectedNews.title);
+                    window.open(selectedNews.link, "_blank");
+                  }}
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
-                  Read Full Article
+                  Read at Source
                 </Button>
               </div>
             </div>

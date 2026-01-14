@@ -29,6 +29,7 @@ export interface Post {
   scheduled_for: string | null;
   published_at: string | null;
   linkedin_post_id: string | null;
+  linkedin_id?: string | null;
   is_ai_generated: boolean;
   ai_prompt: string | null;
   // Draft resumption fields

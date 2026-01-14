@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "dev:emulators": "firebase emulators:start --import=./emulator-data --export-on-exit=./emulator-data",
-    "db:refresh": "node scripts/seed-from-prod.cjs && node scripts/fix-main-user.cjs"
+    "db:sync": ".\\node_modules\\.bin\\firebase.cmd emulators:exec \"node scripts/db-sync-complete.cjs && node scripts/fix-main-user.cjs\" --export-on-exit=./emulator-data",
+    "db:save": ".\\node_modules\\.bin\\firebase.cmd emulators:export ./emulator-data --force"
   },
   "dependencies": {
     "@capacitor/cli": "^8.0.0",

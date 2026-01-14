@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RecommendedPost } from "@/hooks/useRecommendedPosts";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 interface RecommendedPostCardProps {
   post: RecommendedPost;
@@ -13,6 +14,7 @@ interface RecommendedPostCardProps {
 }
 
 export function RecommendedPostCard({ post, onUse, onDelete, compact = false, disabled = false }: RecommendedPostCardProps) {
+  const { trackRecommendationUsed } = useAnalytics();
   const formatTimeAgo = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -29,7 +31,12 @@ export function RecommendedPostCard({ post, onUse, onDelete, compact = false, di
     return (
       <Card
         className={`cursor-pointer hover:border-primary/50 transition-all hover:shadow-md group ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
-        onClick={() => !disabled && onUse(post)}
+        onClick={() => {
+          if (!disabled) {
+            trackRecommendationUsed(post.id, post.topic);
+            onUse(post);
+          }
+        }}
       >
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-2">
@@ -101,7 +108,10 @@ export function RecommendedPostCard({ post, onUse, onDelete, compact = false, di
             variant="gradient"
             size="sm"
             className="flex-1"
-            onClick={() => onUse(post)}
+            onClick={() => {
+              trackRecommendationUsed(post.id, post.topic);
+              onUse(post);
+            }}
             disabled={disabled}
           >
             {disabled ? "Limit Reached" : "Use This Post"}

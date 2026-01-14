@@ -28,13 +28,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.scheduledTopicWorker = exports.scheduledCleanup = exports.fetchTrending = exports.generateRecommendations = void 0;
 const functions = __importStar(require("firebase-functions"));
-const admin = __importStar(require("firebase-admin"));
+// import * as admin from "firebase-admin"; // Removed unused import
 const generative_ai_1 = require("@google/generative-ai");
 const axios_1 = __importDefault(require("axios"));
 const firebase_1 = require("./firebase");
-const genAI = new generative_ai_1.GoogleGenerativeAI(firebase_1.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-// --- Helper Functions ---
+// ... Helper Functions (getTimeframeCutoff, getCacheFreshness, RSS parsers) ...
+// (Parsed RSS functions omitted for brevity if unchanged, but since this is replace_file_content, I must maintain structure carefully or replacements.
+// I will target the specific function generateTopicInsights and the global init lines.)
+// Note: I will use granular replacements below instead of replacing the whole block to be safe and efficient.
 function getTimeframeCutoff(timeframe) {
     const now = new Date();
     switch (timeframe) {
@@ -276,57 +277,59 @@ async function generateTopicInsights(topic) {
             ];
             relevantItems = [...relevantItems, ...newItems].slice(0, 10);
         }
-        let trendingContext = "";
-        if (relevantItems.length > 0) {
-            trendingContext = "Trending now:\n" + relevantItems.map(i => { var _a; return `- ${i.title} (${(_a = i.description) === null || _a === void 0 ? void 0 : _a.substring(0, 100)}...)`; }).join("\n");
-        }
-        else {
-            trendingContext = `Topic: ${topic}`;
-        }
-        const prompt = `Based on the following trending content for the topic "${topic}", generate 3 unique, engaging LinkedIn post concepts.
-        FOR EACH CONCEPT, provide:
-        - A short catchy title
-        - The hook/concept description
-        - The source title/url if it's based on a specific trending item from the list.
+        const trendingContext = relevantItems.length > 0
+            ? "Trending now:\n" + relevantItems.map(i => { var _a; return `- ${i.title} (${(_a = i.description) === null || _a === void 0 ? void 0 : _a.substring(0, 150)}...)`; }).join("\n")
+            : `Topic: ${topic}`;
+        const prompt = `Based on the following trending content for the topic "${topic}", generate 3 high-quality LinkedIn post drafts.
+        
+        The user wants comprehensive content they can use immediately.
+        FOR EACH POST, provide:
+        - A "title" (short, catchy hook)
+        - "content" (The full body of a LinkedIn post, approx 100-200 words). Include:
+          - A strong opening hook.
+          - 2-3 actionable insights or analysis points derived from the trending info.
+          - A clear conclusion or question to drive engagement.
+          - Do NOT use hashtags in the content.
+        - "source_type" (set to "trending")
+        - "source_title" (the specific news/post title this is based on, if applicable)
+        - "source_url" (the url, if applicable)
 
-${trendingContext}
+        Context:
+        ${trendingContext}
 
-Respond with valid JSON only:
-{
-  "insights": [
-    {
-      "title": "string",
-      "content": "string",
-      "source_type": "trending", 
-      "source_title": "string (optional)",
-      "source_url": "string (optional)"
-    }
-  ]
-}`;
+        Respond with valid JSON only:
+        {
+          "insights": [
+            {
+              "title": "string",
+              "content": "string (multiline supported)",
+              "source_type": "trending", 
+              "source_title": "string (optional)",
+              "source_url": "string (optional)"
+            }
+          ]
+        }`;
+        // Initialize Model Lazy
+        if (!firebase_1.GEMINI_API_KEY || firebase_1.GEMINI_API_KEY === "dummy_key") {
+            console.error("Missing GEMINI_API_KEY in generateTopicInsights");
+            return [];
+        }
+        const genAI = new generative_ai_1.GoogleGenerativeAI(firebase_1.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         console.log(`[DEBUG] Generative Model Name: ${model.model}`);
         const result = await model.generateContent({
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: {
+                // responseMimeType: "application/json" // Temporarily commenting out if model doesn't support it strictly or to be safe
+                // Actually gemini-2.0-flash supports it.
                 responseMimeType: "application/json"
             },
             // Reduce safety settings to avoid blocking news content
             safetySettings: [
-                {
-                    category: generative_ai_1.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                    threshold: generative_ai_1.HarmBlockThreshold.BLOCK_ONLY_HIGH
-                },
-                {
-                    category: generative_ai_1.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                    threshold: generative_ai_1.HarmBlockThreshold.BLOCK_ONLY_HIGH
-                },
-                {
-                    category: generative_ai_1.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                    threshold: generative_ai_1.HarmBlockThreshold.BLOCK_ONLY_HIGH
-                },
-                {
-                    category: generative_ai_1.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                    threshold: generative_ai_1.HarmBlockThreshold.BLOCK_ONLY_HIGH
-                }
+                { category: generative_ai_1.HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: generative_ai_1.HarmBlockThreshold.BLOCK_ONLY_HIGH },
+                { category: generative_ai_1.HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: generative_ai_1.HarmBlockThreshold.BLOCK_ONLY_HIGH },
+                { category: generative_ai_1.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: generative_ai_1.HarmBlockThreshold.BLOCK_ONLY_HIGH },
+                { category: generative_ai_1.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: generative_ai_1.HarmBlockThreshold.BLOCK_ONLY_HIGH }
             ]
         });
         const response = await result.response;
@@ -368,95 +371,86 @@ Respond with valid JSON only:
 exports.generateRecommendations = functions.runWith({
     timeoutSeconds: 300,
     memory: "1GB"
-}).https.onRequest((req, res) => {
-    // Note: onRequest handles CORS manually usually, using the 'cors' middleware or headers.
-    // In original code it used `cors(req, res, async () => { ... })`
-    // We will assume simpler handling or wrapper for now, but strictly we should use 'cors' lib if it's an HTTP function.
-    // Original used: 
-    // const cors = require('cors')({ origin: true });
-    // cors(req, res, async () => { ... })
-    // We should import cors.
-    const cors = require('cors')({ origin: true });
-    cors(req, res, async () => {
-        try {
-            const authHeader = req.headers.authorization;
-            if (!authHeader || !authHeader.startsWith('Bearer ')) {
-                res.status(401).json({ error: "Unauthorized" });
-                return;
-            }
-            const idToken = authHeader.split('Bearer ')[1];
-            let decodedToken;
-            try {
-                decodedToken = await admin.auth().verifyIdToken(idToken);
-            }
-            catch (e) {
-                res.status(401).json({ error: "Invalid token" });
-                return;
-            }
-            const { userId, topics, forceRefresh } = req.body;
-            const userDocRel = await firebase_1.db.doc(`users/${decodedToken.uid}`).get();
-            const userDataRel = userDocRel.data();
-            const isPro = (userDataRel === null || userDataRel === void 0 ? void 0 : userDataRel.subscription_tier) === 'pro';
-            const effectiveForceRefresh = isPro ? forceRefresh : false;
-            let effectiveTopics = topics;
-            if (!isPro && topics.length > 3) {
-                effectiveTopics = topics.slice(0, 3);
-            }
-            if (!firebase_1.GEMINI_API_KEY || firebase_1.GEMINI_API_KEY === "dummy_key") {
-                console.error("GEMINI_API_KEY is missing or invalid");
-                res.status(412).json({ error: "AI configuration error: API Key missing" });
-                return;
-            }
-            const recommendations = [];
-            const freshThreshold = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-            for (const topic of effectiveTopics) {
-                const topicLower = topic.toLowerCase();
-                let insights = [];
-                if (!effectiveForceRefresh) {
-                    const insightDoc = await firebase_1.db.collection("topic_insights").doc(topicLower).get();
-                    if (insightDoc.exists) {
-                        const data = insightDoc.data();
-                        if (data && new Date(data.generated_at) > freshThreshold) {
-                            insights = data.insights || [];
-                        }
+}).https.onCall(async (data, context) => {
+    // onCall handles CORS automatically
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Auth required");
+    }
+    try {
+        const userId = context.auth.uid;
+        const { topics, forceRefresh: reqForceRefresh } = data;
+        const userDocRel = await firebase_1.db.doc(`users/${userId}`).get();
+        const userDataRel = userDocRel.data();
+        const isPro = (userDataRel === null || userDataRel === void 0 ? void 0 : userDataRel.subscription_tier) === 'pro';
+        const effectiveForceRefresh = isPro ? reqForceRefresh : false;
+        let effectiveTopics = [];
+        if (Array.isArray(topics)) {
+            effectiveTopics = topics;
+        }
+        else if (typeof topics === 'string') {
+            effectiveTopics = [topics];
+        }
+        if (!isPro && effectiveTopics.length > 3) {
+            effectiveTopics = effectiveTopics.slice(0, 3);
+        }
+        // Lazy load check - moved inside try/catch to handle gracefully
+        if (!firebase_1.GEMINI_API_KEY || firebase_1.GEMINI_API_KEY === "dummy_key") {
+            console.error("GEMINI_API_KEY is missing or invalid");
+            throw new functions.https.HttpsError("failed-precondition", "AI configuration error: API Key missing");
+        }
+        const recommendations = [];
+        const freshThreshold = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        for (const topic of effectiveTopics) {
+            const topicLower = topic.toLowerCase();
+            let insights = [];
+            if (!effectiveForceRefresh) {
+                const insightDoc = await firebase_1.db.collection("topic_insights").doc(topicLower).get();
+                if (insightDoc.exists) {
+                    const data = insightDoc.data();
+                    if (data && new Date(data.generated_at) > freshThreshold) {
+                        insights = data.insights || [];
                     }
                 }
-                if (insights.length === 0) {
-                    insights = await generateTopicInsights(topic);
-                }
-                if (insights.length > 0) {
-                    insights.forEach((insight) => {
-                        recommendations.push({
-                            user_id: userId,
-                            topic: topic,
-                            title: insight.title,
-                            content: insight.content,
-                            source_type: insight.source_type,
-                            source_url: insight.source_url || null,
-                            source_title: insight.source_title || null,
-                            is_used: false,
-                            generated_at: new Date().toISOString(),
-                            expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-                            created_at: new Date().toISOString()
-                        });
+            }
+            if (insights.length === 0) {
+                insights = await generateTopicInsights(topic);
+            }
+            if (insights.length > 0) {
+                insights.forEach((insight) => {
+                    recommendations.push({
+                        user_id: userId,
+                        topic: topic,
+                        title: insight.title,
+                        content: insight.content,
+                        source_type: insight.source_type,
+                        source_url: insight.source_url || null,
+                        source_title: insight.source_title || null,
+                        is_used: false,
+                        generated_at: new Date().toISOString(),
+                        expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+                        created_at: new Date().toISOString()
                     });
-                }
-            }
-            if (recommendations.length > 0) {
-                const batch = firebase_1.db.batch();
-                recommendations.forEach((rec) => {
-                    const docRef = firebase_1.db.collection("recommended_posts").doc();
-                    batch.set(docRef, rec);
                 });
-                await batch.commit();
             }
-            res.json({ success: true, recommendations });
         }
-        catch (error) {
-            console.error("Error generating recommendations:", error);
-            res.status(500).json({ error: error.message || "Failed to generate recommendations" });
+        if (recommendations.length > 0) {
+            const batch = firebase_1.db.batch();
+            recommendations.forEach((rec) => {
+                const docRef = firebase_1.db.collection("recommended_posts").doc();
+                batch.set(docRef, rec);
+            });
+            await batch.commit();
         }
-    });
+        return { success: true, recommendations };
+    }
+    catch (error) {
+        console.error("Error generating recommendations:", error);
+        // Ensure error is instance of HttpsError
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        }
+        throw new functions.https.HttpsError("internal", error.message || "Failed to generate recommendations");
+    }
 });
 exports.fetchTrending = functions.runWith({
     timeoutSeconds: 300,

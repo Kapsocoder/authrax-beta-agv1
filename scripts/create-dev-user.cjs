@@ -31,4 +31,4 @@ async function createUser(email, password) {
     }
 }
 
-createUser('kapil_sabarwal@yahoo.com', 'password123');
+createUser('kapil_sabharwal@yahoo.com', 'password123');

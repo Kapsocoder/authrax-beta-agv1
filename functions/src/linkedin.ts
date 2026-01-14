@@ -126,18 +126,14 @@ export const handleLinkedInCallback = functions.https.onCall(async (data, contex
     }
 });
 
-export const publishToLinkedIn = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
-    }
-
+// Internal function reuseable by Scheduler
+export const publishToLinkedInInternal = async (userId: string, data: any) => {
     const { content, visibility = "PUBLIC", mediaUrls = [] } = data;
 
     if (!content) {
         throw new functions.https.HttpsError("invalid-argument", "Post content is required.");
     }
 
-    const userId = context.auth.uid;
     const integrationDoc = await db.doc(`users/${userId}/integrations/linkedin`).get();
 
     if (!integrationDoc.exists) {
@@ -271,6 +267,15 @@ export const publishToLinkedIn = functions.https.onCall(async (data, context) =>
         console.error("LinkedIn Publish Function Error:", error);
         throw new functions.https.HttpsError("internal", error.message || "Failed to publish post.");
     }
+};
+
+export const publishToLinkedIn = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+    }
+
+    const userId = context.auth.uid;
+    return await publishToLinkedInInternal(userId, data);
 });
 
 export const getPostAnalytics = functions.https.onCall(async (data, context) => {

@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getPostAnalytics = exports.publishToLinkedIn = exports.handleLinkedInCallback = exports.getLinkedInAuthUrl = void 0;
+exports.getPostAnalytics = exports.publishToLinkedIn = exports.publishToLinkedInInternal = exports.handleLinkedInCallback = exports.getLinkedInAuthUrl = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const db = admin.firestore();
@@ -127,15 +127,12 @@ exports.handleLinkedInCallback = functions.https.onCall(async (data, context) =>
         throw new functions.https.HttpsError("internal", error.message);
     }
 });
-exports.publishToLinkedIn = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
-    }
+// Internal function reuseable by Scheduler
+const publishToLinkedInInternal = async (userId, data) => {
     const { content, visibility = "PUBLIC", mediaUrls = [] } = data;
     if (!content) {
         throw new functions.https.HttpsError("invalid-argument", "Post content is required.");
     }
-    const userId = context.auth.uid;
     const integrationDoc = await db.doc(`users/${userId}/integrations/linkedin`).get();
     if (!integrationDoc.exists) {
         throw new functions.https.HttpsError("failed-precondition", "User is not connected to LinkedIn.");
@@ -252,6 +249,14 @@ exports.publishToLinkedIn = functions.https.onCall(async (data, context) => {
         console.error("LinkedIn Publish Function Error:", error);
         throw new functions.https.HttpsError("internal", error.message || "Failed to publish post.");
     }
+};
+exports.publishToLinkedInInternal = publishToLinkedInInternal;
+exports.publishToLinkedIn = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+    }
+    const userId = context.auth.uid;
+    return await (0, exports.publishToLinkedInInternal)(userId, data);
 });
 exports.getPostAnalytics = functions.https.onCall(async (data, context) => {
     var _a;

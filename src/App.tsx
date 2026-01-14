@@ -21,6 +21,7 @@ import Settings from "./pages/Settings";
 import Trending from "./pages/Trending";
 import Drafts from "./pages/Drafts";
 import Recommendations from "./pages/Recommendations";
+import Published from "./pages/Published";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -77,6 +78,7 @@ const AppRoutes = () => (
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/create" element={<ProtectedRoute><Create /></ProtectedRoute>} />
       <Route path="/drafts" element={<ProtectedRoute><Drafts /></ProtectedRoute>} />
+      <Route path="/published" element={<ProtectedRoute><Published /></ProtectedRoute>} />
       <Route path="/trending" element={<ProtectedRoute><Trending /></ProtectedRoute>} />
       <Route path="/recommendations" element={<ProtectedRoute><Recommendations /></ProtectedRoute>} />
       <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />

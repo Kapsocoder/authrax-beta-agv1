@@ -224,21 +224,34 @@ export function useVoiceProfile() {
       // but here we just trigger analysis. The backend likely reads or receives the posts.
       // The current backend function accepts 'posts' in body.
 
-      const response = await fetch("https://us-central1-authrax-beta-lv1.cloudfunctions.net/analyzeVoice", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ posts, userId: user.uid })
-      });
+      // Use fetch with explicit timeout via AbortController
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || "Failed to analyze voice");
+      try {
+        const response = await fetch("https://us-central1-authrax-beta-lv1.cloudfunctions.net/analyzeVoice", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ posts, userId: user.uid }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || errorData.message || "Failed to analyze voice");
+        }
+        return await response.json();
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          throw new Error("Analysis timed out after 5 minutes");
+        }
+        throw error;
       }
-
-      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["voice-profile", user?.uid] });

@@ -32,7 +32,7 @@ export function useAIGeneration() {
   const generatePost = useMutation({
     mutationFn: async (params: GeneratePostParams) => {
       // Note: httpsCallable handles auth tokens automatically
-      const generatePostFn = httpsCallable(functions, 'generatePost');
+      const generatePostFn = httpsCallable(functions, 'generatePost', { timeout: 300000 });
       const result: any = await generatePostFn({
         prompt: params.prompt,
         type: params.type,

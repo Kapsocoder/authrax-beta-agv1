@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useVoiceProfile } from "@/hooks/useVoiceProfile";
 import { toast } from "sonner";
 import { BrandDNAModal } from "./BrandDNAModal";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ export interface VoiceTrainingSectionRef {
 
 export const VoiceTrainingSection = forwardRef<VoiceTrainingSectionRef>(function VoiceTrainingSection(_, ref) {
     const { voiceProfile, isLoading, analyzeVoice, updateVoiceProfile } = useVoiceProfile();
+    const { trackBrandDNAToggled } = useAnalytics();
     const [currentPost, setCurrentPost] = useState("");
     const [savedPosts, setSavedPosts] = useState<string[]>([]);
     const [isExpanded, setIsExpanded] = useState(false);
@@ -53,6 +55,7 @@ export const VoiceTrainingSection = forwardRef<VoiceTrainingSectionRef>(function
 
         try {
             await updateVoiceProfile.mutateAsync({ isActive: checked });
+            trackBrandDNAToggled(checked);
         } catch (error) {
             // Error handled in hook
         }

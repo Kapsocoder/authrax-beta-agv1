@@ -24,6 +24,12 @@ This starts:
 - Auth Emulator (9099)
 - Hosting Emulator (5000)
 
+### Data Persistence
+The emulator now saves data to `./emulator-data` automatically on exit.
+To reset or refresh data:
+- **`npm run db:reset`**: Wipes local data and fixes the main user.
+- **`npm run db:refresh`**: Seeds fresh data from production (if configured) and fixes the main user.
+
 ## 3. Environment Variables (Webhooks)
 We use `.env` files in `functions/` to manage URLs.
 - **Production**: Uses the hardcoded fallback or `functions/.env` (if deployed).

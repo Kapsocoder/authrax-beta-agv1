@@ -7,8 +7,16 @@ import * as path from 'path';
 import * as dotenv from 'dotenv';
 
 // Config dotenv to look at root .env if running locally/emulator
+// Config dotenv to look at root .env and .env.local if running locally/emulator
 if (process.env.FUNCTIONS_EMULATOR) {
-    dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+    // FORCE FIRESTORE EMULATOR if undefined (fixes testing in shell)
+    if (!process.env.FIRESTORE_EMULATOR_HOST) {
+        process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080";
+        console.log("DEBUG: Forced FIRESTORE_EMULATOR_HOST to 127.0.0.1:8080");
+    }
+
+    dotenv.config({ path: path.resolve(__dirname, '../.env') });
+    dotenv.config({ path: path.resolve(__dirname, '../.env.local'), override: true });
 }
 
 if (!admin.apps.length) {
@@ -18,7 +26,15 @@ if (!admin.apps.length) {
     // This is required because firebase.ts often loads before index.ts
     const localKeyPath = "c:\\Users\\kapil\\OneDrive\\Business\\Development\\Authrax-Beta-Lv1\\authrax\\serviceAccountKey.json";
 
-    if (process.env.FUNCTIONS_EMULATOR && localKeyPath) {
+    // FIX: If we are running with the Auth Emulator, we MUST NOT initialize with production credentials.
+    // Doing so forces the Admin SDK to verify tokens against production, which fails for emulator tokens.
+    if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+        console.log("DEBUG: Auth Emulator detected. Initializing Admin SDK *without* service account to allow emulator tokens.");
+        admin.initializeApp({
+            projectId: "authrax-beta-lv1",
+            storageBucket: "authrax-beta-lv1.firebasestorage.app"
+        });
+    } else if (process.env.FUNCTIONS_EMULATOR && localKeyPath) {
         try {
             console.log("Requiring key from:", localKeyPath);
             // eslint-disable-next-line @typescript-eslint/no-var-requires

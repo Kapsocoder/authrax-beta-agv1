@@ -34,6 +34,7 @@ import { GenerateImageDialog } from "@/components/studio/GenerateImageDialog";
 import { Template, useTemplate, useTemplates } from "@/hooks/useTemplates";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useVoiceProfile } from "@/hooks/useVoiceProfile";
 import {
   usePosts,
   type ScheduledPostV2,
@@ -43,6 +44,7 @@ import {
 } from "@/hooks/usePosts";
 import { useAIGeneration } from "@/hooks/useAIGeneration";
 import { useAutoSaveDraft } from "@/hooks/useAutoSaveDraft";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { useNavigationGuard } from "@/contexts/NavigationGuardContext";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,6 +58,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -78,8 +81,10 @@ export default function Create() {
   const [searchParams] = useSearchParams();
   const { user, signOut } = useAuth();
   const { profile, checkUsageLimit, incrementUsage, usageCount } = useProfile();
+  const { voiceProfile, updateVoiceProfile } = useVoiceProfile();
   const { createPost, updatePost } = usePosts();
   const { generatePost, regeneratePost, isGenerating } = useAIGeneration();
+  const { trackTemplateUsed } = useAnalytics();
   const { data: allTemplates = [] } = useTemplates();
 
   // Mode from navigation state
@@ -252,6 +257,20 @@ export default function Create() {
     }
     return null;
   });
+
+  const handleToggleBrandDNA = async (checked: boolean) => {
+    if (!voiceProfile?.is_trained && checked) {
+      toast.error("You must train your brand voice before enabling it.");
+      return;
+    }
+
+    try {
+      await updateVoiceProfile.mutateAsync({ isActive: checked });
+      // Optional: Add analytics tracking here if needed
+    } catch (error) {
+      // Error handled in hook
+    }
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveDraftRef = useRef<() => Promise<void>>();
@@ -450,6 +469,11 @@ export default function Create() {
       });
 
       setGeneratedContent(result);
+
+      // Track Template Usage
+      if (selectedTemplate) {
+        trackTemplateUsed(selectedTemplate.id, selectedTemplate.name);
+      } // Backend usage_count is handled by Cloud Function
 
       // Update last generation params
       setLastGenerationParams({
@@ -1334,8 +1358,23 @@ export default function Create() {
 
           {/* Tone Selector - show when a mode is selected */}
           {mode && (
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center gap-4 justify-center">
               <ToneSelector selected={selectedTone} onChange={setSelectedTone} />
+
+              {voiceProfile?.is_trained && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/20">
+                  <Label htmlFor="brand-dna-toggle-create" className="text-xs font-medium cursor-pointer flex items-center gap-2">
+                    <Sparkles className="w-3 h-3 text-primary" />
+                    Use Brand DNA
+                  </Label>
+                  <Switch
+                    id="brand-dna-toggle-create"
+                    checked={!!voiceProfile.isActive}
+                    onCheckedChange={handleToggleBrandDNA}
+                    className="scale-75 origin-left"
+                  />
+                </div>
+              )}
             </div>
           )}
 
