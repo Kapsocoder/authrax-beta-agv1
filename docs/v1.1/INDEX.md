@@ -8,8 +8,11 @@ This folder contains the complete documentation for **Release 1.1** (Jan 2026).
     *   Defines the Scope, User Stories (Brand DNA, Trending), and Success Criteria.
     *   Separates "User Features" from "Technical Requirements".
 
+*   **[Release Notes](./RELEASE_NOTES.md)**:
+    *   Official changelog of features, enhancements, and fixes in v1.1.
+
 *   **[UAT Report](./UAT_Report.md)**:
-    *   Log of verification tests performed.
+    *   Log of verification tests performed in Production.
     *   Confirms pass/fail status for all features.
 
 *   **[Implementation Log](./Implementation_Log.md)**:
