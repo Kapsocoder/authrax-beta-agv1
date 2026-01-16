@@ -55,11 +55,10 @@ export interface VoiceProfile {
 
 export function isVoiceProfileReady(profile: VoiceProfile | null | undefined): boolean {
   if (!profile) return false;
-  // It is ready if it is explicitly trained, active, or has a valid generated ID (not a draft container)
+  // Simplified readiness check: A profile is ready if it exists and is not a draft container.
+  // This ensures "View My Brand DNA" is always available for existing profiles.
   return !!(
-    profile.is_trained ||
-    profile.isActive ||
-    (profile.id && profile.id !== 'BestPostsFromUser' && profile.id !== 'default')
+    profile.id && profile.id !== 'BestPostsFromUser' && profile.id !== 'default'
   );
 }
 
@@ -113,7 +112,7 @@ export function useVoiceProfile() {
       let activeProfileData: any = {};
       let activeProfileId = "BestPostsFromUser";
 
-      // Attempt 1: Get Active Profile
+      // Attempt 1: Get Active Profile (Priority)
       const activeQuery = query(collectionRef, where("isActive", "==", true), limit(1));
       const activeSnapshot = await getDocs(activeQuery);
 
@@ -123,7 +122,6 @@ export function useVoiceProfile() {
         activeProfileId = doc.id;
       } else {
         // Attempt 2: Get Most Recent Trained Profile
-        // We rely on created_at here, but trained profiles usually have it.
         const trainedQuery = query(
           collectionRef,
           where("is_trained", "==", true),
@@ -136,6 +134,39 @@ export function useVoiceProfile() {
           const doc = trainedSnapshot.docs[0];
           activeProfileData = doc.data();
           activeProfileId = doc.id;
+        } else {
+          // Attempt 3: Broad Fallback (Get ANY recent profile)
+          // Fetch everything (limit 20) and filter in memory to find ANY valid profile.
+          // This handles cases where isActive=false AND is_trained is missing/false, 
+          // OR created_at is missing (so orderBy skipped it).
+          const fallbackQuery = query(collectionRef, limit(20));
+          const fallbackSnapshot = await getDocs(fallbackQuery);
+
+          // Filter out reserved IDs
+          const candidates = fallbackSnapshot.docs.filter(d =>
+            d.id !== "BestPostsFromUser" && d.id !== "default"
+          );
+
+          if (candidates.length > 0) {
+            // Sort by updated_at or created_at descending in memory
+            candidates.sort((a, b) => {
+              const dataA = a.data();
+              const dataB = b.data();
+              const getT = (d: any) => {
+                // Try updated, then created, then 0. Support Timestamp object or string/date.
+                const val = d.updated_at || d.updatedAt || d.created_at || d.createdAt;
+                if (!val) return 0;
+                if (typeof val.toMillis === 'function') return val.toMillis();
+                if (val instanceof Date) return val.getTime();
+                return new Date(val).getTime();
+              };
+              return getT(dataB) - getT(dataA); // Descending
+            });
+
+            const bestCandidate = candidates[0];
+            activeProfileData = bestCandidate.data();
+            activeProfileId = bestCandidate.id;
+          }
         }
       }
 
@@ -172,6 +203,8 @@ export function useVoiceProfile() {
 
       return {
         id: activeProfileId,
+        isActive: !!activeProfileData.isActive, // Ensure boolean
+        is_trained: !!activeProfileData.is_trained, // Ensure boolean 
         ...activeProfileData,
         draft_posts: draftPosts,
         sample_posts: effectiveSamplePosts,
