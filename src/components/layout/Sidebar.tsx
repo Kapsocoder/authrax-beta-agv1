@@ -35,17 +35,17 @@ export function Sidebar({ onLogout }: SidebarProps) {
   };
 
   return (
-    <aside className="hidden md:flex flex-col w-64 h-screen bg-card border-r border-border p-4 fixed left-0 top-0">
+    <aside className="hidden md:flex flex-col w-64 h-screen bg-card/60 backdrop-blur-xl border-r border-border/40 p-4 fixed left-0 top-0 z-40 supports-[backdrop-filter]:bg-card/40">
       <div className="flex items-center gap-3 px-2 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-glow overflow-hidden">
-          <img src={logo} alt="Authrax Logo" className="w-full h-full object-cover p-1" />
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center shadow-glow overflow-hidden border border-white/10 backdrop-blur-sm">
+          <img src={logo} alt="Authrax Logo" className="w-full h-full object-cover" />
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-bold text-lg text-foreground">Authrax</h1>
+            <h1 className="font-bold text-lg text-foreground tracking-tight">Authrax</h1>
             <SubscriptionBadge />
           </div>
-          <p className="text-xs text-muted-foreground">LinkedIn Branding</p>
+          <p className="text-xs text-muted-foreground font-medium">Personal Branding</p>
         </div>
       </div>
 
@@ -59,13 +59,16 @@ export function Sidebar({ onLogout }: SidebarProps) {
               key={item.path}
               onClick={() => handleNavigation(item.path)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left",
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 text-left group relative overflow-hidden",
                 isActive
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  ? "text-primary font-medium bg-primary/10 shadow-[0_0_20px_-5px_rgba(var(--primary),0.3)]"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
               )}
             >
-              <Icon className="w-5 h-5" />
+              {isActive && (
+                <div className="absolute inset-y-0 left-0 w-1 bg-primary rounded-r-full shadow-[0_0_10px_2px_rgba(var(--primary),0.5)]" />
+              )}
+              <Icon className={cn("w-5 h-5 transition-transform duration-300 group-hover:scale-110", isActive && "text-primary")} />
               <span className="text-sm">{item.label}</span>
             </button>
           );

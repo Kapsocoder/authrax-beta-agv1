@@ -165,7 +165,7 @@ export const Hero = () => {
                 <div className="relative max-w-5xl mx-auto perspective-1000">
                     <div className="relative">
                         {/* Desktop View */}
-                        <div ref={dashboardRef} className="rounded-xl bg-gradient-to-b from-border/50 to-border/10 p-2 backdrop-blur-xl border border-white/10 shadow-2xl relative z-10 transform-style-3d will-change-transform">
+                        <div ref={dashboardRef} className="rounded-xl p-2 shadow-2xl relative z-10 transform-style-3d will-change-transform glass-strong">
                             <div className="rounded-lg overflow-hidden bg-background aspect-auto md:aspect-[16/10] border border-border/50 relative group shadow-inner">
                                 <DashboardPreview />
                             </div>

@@ -8,13 +8,13 @@ export default function Privacy() {
     const navigate = useNavigate();
 
     return (
-        <div className="min-h-screen bg-background dark flex flex-col relative overflow-hidden text-foreground">
+        <div className="min-h-screen bg-background flex flex-col relative overflow-hidden text-foreground">
             {/* Navbar (Minimal) */}
             <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/10 bg-background/80 backdrop-blur-md">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
                         <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center shadow-glow overflow-hidden">
-                            <img src={logo} alt="Authrax Logo" className="w-full h-full object-cover p-0.5" />
+                            <img src={logo} alt="Authrax Logo" className="w-full h-full object-cover" />
                         </div>
                         <span className="text-xl font-bold text-foreground">Authrax</span>
                     </div>

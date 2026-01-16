@@ -62,7 +62,7 @@ export function TemplateCard({ template, onClick, selected, compact, showBadges 
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02] bg-[#0A0A0B] border-white/5",
+        "cursor-pointer transition-all hover:shadow-elevated hover:scale-[1.02] bg-card border-border",
         selected && "ring-2 ring-primary border-primary"
       )}
       onClick={onClick}

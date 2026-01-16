@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { ThemeProvider } from "@/components/theme-provider";
 import { NavigationGuardProvider } from "@/contexts/NavigationGuardContext";
 import Index from "./pages/Index";
 import Why from "./pages/Why";
@@ -66,45 +67,46 @@ import LinkedInCallback from "./pages/auth/LinkedInCallback";
 import Waitlist from "./pages/Waitlist";
 
 const AppRoutes = () => (
-  <div className="dark">
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/why" element={<Why />} />
-      <Route path="/waitlist" element={<Waitlist />} />
-      <Route path="/privacy" element={<Privacy />} />
-      <Route path="/terms" element={<Terms />} />
-      <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
-      <Route path="/auth/callback/linkedin" element={<ProtectedRoute><LinkedInCallback /></ProtectedRoute>} />
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/create" element={<ProtectedRoute><Create /></ProtectedRoute>} />
-      <Route path="/drafts" element={<ProtectedRoute><Drafts /></ProtectedRoute>} />
-      <Route path="/published" element={<ProtectedRoute><Published /></ProtectedRoute>} />
-      <Route path="/trending" element={<ProtectedRoute><Trending /></ProtectedRoute>} />
-      <Route path="/recommendations" element={<ProtectedRoute><Recommendations /></ProtectedRoute>} />
-      <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
-      <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-      <Route path="/voice" element={<ProtectedRoute><Voice /></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  </div>
+  // Removed hardcoded dark class wrapper
+  <Routes>
+    <Route path="/" element={<Index />} />
+    <Route path="/why" element={<Why />} />
+    <Route path="/waitlist" element={<Waitlist />} />
+    <Route path="/privacy" element={<Privacy />} />
+    <Route path="/terms" element={<Terms />} />
+    <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+    <Route path="/auth/callback/linkedin" element={<ProtectedRoute><LinkedInCallback /></ProtectedRoute>} />
+    <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+    <Route path="/create" element={<ProtectedRoute><Create /></ProtectedRoute>} />
+    <Route path="/drafts" element={<ProtectedRoute><Drafts /></ProtectedRoute>} />
+    <Route path="/published" element={<ProtectedRoute><Published /></ProtectedRoute>} />
+    <Route path="/trending" element={<ProtectedRoute><Trending /></ProtectedRoute>} />
+    <Route path="/recommendations" element={<ProtectedRoute><Recommendations /></ProtectedRoute>} />
+    <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
+    <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+    <Route path="/voice" element={<ProtectedRoute><Voice /></ProtectedRoute>} />
+    <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+    <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+    <Route path="*" element={<NotFound />} />
+  </Routes>
 );
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <NavigationGuardProvider>
-            <ErrorBoundary>
-              <AppRoutes />
-            </ErrorBoundary>
-          </NavigationGuardProvider>
-        </AuthProvider>
-      </BrowserRouter>
+      <ThemeProvider defaultTheme="light" storageKey="authrax-ui-theme">
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <NavigationGuardProvider>
+              <ErrorBoundary>
+                <AppRoutes />
+              </ErrorBoundary>
+            </NavigationGuardProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

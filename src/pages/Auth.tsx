@@ -40,7 +40,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-background dark flex">
+    <div className="min-h-screen bg-background flex">
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-hero relative overflow-hidden">
         <div className="absolute inset-0 bg-noise opacity-[0.03]" />
@@ -50,7 +50,7 @@ export default function Auth() {
         <div className="relative z-10 flex flex-col justify-center px-16">
           <div className="flex items-center gap-4 mb-8">
             <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-glow overflow-hidden cursor-pointer" onClick={() => navigate("/")}>
-              <img src={logo} alt="Authrax Logo" className="w-full h-full object-cover p-1" />
+              <img src={logo} alt="Authrax Logo" className="w-full h-full object-cover" />
             </div>
             <div>
               <h1 className="text-4xl font-bold text-foreground">Authrax</h1>

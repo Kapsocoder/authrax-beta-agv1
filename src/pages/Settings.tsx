@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/components/theme-provider";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { SupportDialog } from "@/components/settings/SupportDialog";
@@ -15,6 +16,7 @@ import { BugReportDialog } from "@/components/settings/BugReportDialog";
 export default function Settings() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     if (!user) {
@@ -48,10 +50,15 @@ export default function Settings() {
       icon: Palette,
       title: "Appearance",
       description: "Customize how Authrax looks",
-      status: "coming_soon",
+      status: "active",
       settings: [
-        { label: "Dark mode", description: "Use dark theme", enabled: true },
-        { label: "Compact mode", description: "Reduce spacing", enabled: false },
+        {
+          label: "Dark mode",
+          description: "Use dark theme",
+          enabled: theme === 'dark',
+          onChange: (checked: boolean) => setTheme(checked ? 'dark' : 'light')
+        },
+        { label: "Compact mode", description: "Reduce spacing", enabled: false, status: "coming_soon" },
       ],
     },
   ];
@@ -88,7 +95,11 @@ export default function Settings() {
                       <Label className="text-foreground">{setting.label}</Label>
                       <p className="text-sm text-muted-foreground">{setting.description}</p>
                     </div>
-                    <Switch defaultChecked={setting.enabled} disabled={section.status === 'coming_soon'} />
+                    <Switch
+                      checked={setting.enabled}
+                      onCheckedChange={setting.onChange}
+                      disabled={section.status === 'coming_soon' || ('status' in setting && setting.status === 'coming_soon')}
+                    />
                   </div>
                 ))}
               </CardContent>

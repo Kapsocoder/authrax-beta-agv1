@@ -6,7 +6,7 @@ export default function Why() {
     const navigate = useNavigate();
 
     return (
-        <div className="min-h-screen bg-background dark flex flex-col relative overflow-hidden">
+        <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
             {/* Background Ambience */}
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
             <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
