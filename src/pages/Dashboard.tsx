@@ -62,7 +62,7 @@ export default function Dashboard() {
   const [searchParams] = useSearchParams();
   const { user, signOut } = useAuth();
   const { profile, needsOnboarding, isLoading: profileLoading } = useProfile();
-  const { voiceProfile } = useVoiceProfile();
+  const { voiceProfile, isLoading: isLoadingVoice } = useVoiceProfile();
   const { posts } = usePosts();
   const { topics } = useUserTopics();
   const [greeting, setGreeting] = useState("");
@@ -203,9 +203,11 @@ export default function Dashboard() {
 
   // Voice Score / Brand DNA Status
   const getVoiceStatus = () => {
-    const isReady = isVoiceProfileReady(voiceProfile);
-    if (isReady && voiceProfile?.isActive) return "Active";
-    if (isReady && !voiceProfile?.isActive) return "Inactive";
+    if (isLoadingVoice) return "Loading...";
+    // Standardized check: If ready (exists), check active status.
+    if (isVoiceProfileReady(voiceProfile)) {
+      return voiceProfile?.isActive ? "Active" : "Inactive";
+    }
     return "Analyze";
   };
 

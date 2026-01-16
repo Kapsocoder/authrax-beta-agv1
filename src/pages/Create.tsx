@@ -1362,7 +1362,7 @@ export default function Create() {
             <div className="flex flex-col items-center gap-4 justify-center">
               <ToneSelector selected={selectedTone} onChange={setSelectedTone} />
 
-              {voiceProfile?.is_trained && (
+              {isVoiceProfileReady(voiceProfile) && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/20">
                   <Label htmlFor="brand-dna-toggle-create" className="text-xs font-medium cursor-pointer flex items-center gap-2">
                     <Sparkles className="w-3 h-3 text-primary" />
