@@ -101,52 +101,65 @@ export function useVoiceProfile() {
       // 2. Query the LATEST trained profile (regardless of Active status)
       // We want to be able to toggle it on/off, so we need to fetch it even if inactive.
       // UPDATED: Relaxed query to catch profiles that might have isActive=true but missing is_trained flag
+      // 2. Query the LATEST trained profile (regardless of Active status)
+      // Strategy:
+      // 1. First, check for an explicitly active profile (isActive: true).
+      //    This handles n8n-created profiles that might be missing is_trained or created_at.
+      // 2. Fallback: Check for the most recent trained profile (is_trained: true).
+      // 3. Fallback: Default initialization.
+
       const collectionRef = collection(db, "users", user.uid, "voice_profiles");
-      const q = query(
-        collectionRef,
-        orderBy("created_at", "desc"),
-        limit(5)
-      );
-      const querySnapshot = await getDocs(q);
 
       let activeProfileData: any = {};
-      let activeProfileId = "BestPostsFromUser"; // Default ID if no active profile found
+      let activeProfileId = "BestPostsFromUser";
 
-      if (!querySnapshot.empty) {
-        // Find the first valid profile (either is_trained OR isActive)
-        // that is NOT one of the reserved draft docs
-        const validDoc = querySnapshot.docs.find(d => {
-          const data = d.data();
-          const isReserved = d.id === "BestPostsFromUser" || d.id === "default";
-          const hasStatus = data.is_trained === true || data.isActive === true;
-          return !isReserved && hasStatus;
-        });
+      // Attempt 1: Get Active Profile
+      const activeQuery = query(collectionRef, where("isActive", "==", true), limit(1));
+      const activeSnapshot = await getDocs(activeQuery);
 
-        if (validDoc) {
-          activeProfileData = validDoc.data();
-          activeProfileId = validDoc.id;
+      if (!activeSnapshot.empty) {
+        const doc = activeSnapshot.docs[0];
+        activeProfileData = doc.data();
+        activeProfileId = doc.id;
+      } else {
+        // Attempt 2: Get Most Recent Trained Profile
+        // We rely on created_at here, but trained profiles usually have it.
+        const trainedQuery = query(
+          collectionRef,
+          where("is_trained", "==", true),
+          orderBy("created_at", "desc"),
+          limit(1)
+        );
+        const trainedSnapshot = await getDocs(trainedQuery);
 
-          // Helper to safely convert Firestore Timestamps to ISO strings
-          const toISO = (dateVal: any) => {
-            if (!dateVal) return null;
-            if (typeof dateVal.toDate === 'function') {
-              return dateVal.toDate().toISOString();
-            }
-            if (dateVal instanceof Date) {
-              return dateVal.toISOString();
-            }
-            return dateVal; // Assume string
-          };
+        if (!trainedSnapshot.empty) {
+          const doc = trainedSnapshot.docs[0];
+          activeProfileData = doc.data();
+          activeProfileId = doc.id;
+        }
+      }
 
-          if (activeProfileData.created_at || activeProfileData.createdAt) {
-            activeProfileData.created_at = toISO(activeProfileData.created_at || activeProfileData.createdAt);
+      if (activeProfileId !== "BestPostsFromUser") {
+        // Helper to safely convert Firestore Timestamps to ISO strings
+        const toISO = (dateVal: any) => {
+          if (!dateVal) return null;
+          if (typeof dateVal.toDate === 'function') {
+            return dateVal.toDate().toISOString();
           }
-          if (activeProfileData.updated_at || activeProfileData.updatedAt) {
-            activeProfileData.updated_at = toISO(activeProfileData.updated_at || activeProfileData.updatedAt);
+          if (dateVal instanceof Date) {
+            return dateVal.toISOString();
           }
-          if (activeProfileData.trained_at || activeProfileData.trainedAt) {
-            activeProfileData.trained_at = toISO(activeProfileData.trained_at || activeProfileData.trainedAt);
-          }
+          return dateVal; // Assume string
+        };
+
+        if (activeProfileData.created_at || activeProfileData.createdAt) {
+          activeProfileData.created_at = toISO(activeProfileData.created_at || activeProfileData.createdAt);
+        }
+        if (activeProfileData.updated_at || activeProfileData.updatedAt) {
+          activeProfileData.updated_at = toISO(activeProfileData.updated_at || activeProfileData.updatedAt);
+        }
+        if (activeProfileData.trained_at || activeProfileData.trainedAt) {
+          activeProfileData.trained_at = toISO(activeProfileData.trained_at || activeProfileData.trainedAt);
         }
       }
 
