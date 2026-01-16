@@ -13,7 +13,7 @@ import {
     Brain, Sparkles, MessageSquare, AlignLeft, Smile, PenTool, Edit3,
     RotateCcw, Scale, ShieldBan, ThumbsUp, ThumbsDown, Quote, ListChecks
 } from "lucide-react";
-import { VoiceProfile, useVoiceProfile } from "@/hooks/useVoiceProfile";
+import { VoiceProfile, useVoiceProfile, isVoiceProfileReady } from "@/hooks/useVoiceProfile";
 import { useState, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -129,7 +129,7 @@ export function BrandDNAModal({ isOpen, onClose, voiceProfile }: BrandDNAModalPr
                                 <div>
                                     <DialogTitle className="text-xl font-bold flex items-center gap-2">
                                         Brand DNA Profile
-                                        {voiceProfile.is_trained && (
+                                        {isVoiceProfileReady(voiceProfile) && (
                                             <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20 gap-1 pl-1">
                                                 <Sparkles className="w-3 h-3 fill-current" />
                                                 Active

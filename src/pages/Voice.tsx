@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { useVoiceProfile } from "@/hooks/useVoiceProfile";
+import { useVoiceProfile, isVoiceProfileReady } from "@/hooks/useVoiceProfile";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { useProfile } from "@/hooks/useProfile";
@@ -63,7 +63,7 @@ export default function Voice() {
     setEditedPrompt("");
   };
 
-  const voiceScore = voiceProfile?.is_trained ? 75 + Math.min(25, (voiceProfile.sample_posts?.length || 0) * 5) : 0;
+  const voiceScore = isVoiceProfileReady(voiceProfile) ? 75 + Math.min(25, (voiceProfile?.sample_posts?.length || 0) * 5) : 0;
 
   const voiceTraits = [
     {
@@ -217,7 +217,7 @@ export default function Voice() {
             <CardTitle className="text-lg flex items-center gap-2">
               <Brain className="w-5 h-5 text-primary" />
               Your Voice Profile
-              {voiceProfile?.is_trained && (
+              {isVoiceProfileReady(voiceProfile) && (
                 <CheckCircle2 className="w-4 h-4 text-success ml-2" />
               )}
             </CardTitle>

@@ -33,7 +33,7 @@ import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
 import { TrendingTemplates } from "@/components/templates/TrendingTemplates";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { useVoiceProfile } from "@/hooks/useVoiceProfile";
+import { useVoiceProfile, isVoiceProfileReady } from "@/hooks/useVoiceProfile";
 import { usePosts } from "@/hooks/usePosts";
 import { useUserTopics } from "@/hooks/useUserTopics";
 import { useTrending, NewsItem, TrendingPost } from "@/hooks/useTrending";
@@ -203,8 +203,9 @@ export default function Dashboard() {
 
   // Voice Score / Brand DNA Status
   const getVoiceStatus = () => {
-    if (voiceProfile?.is_trained && voiceProfile?.isActive) return "Active";
-    if (voiceProfile?.is_trained && !voiceProfile?.isActive) return "Inactive";
+    const isReady = isVoiceProfileReady(voiceProfile);
+    if (isReady && voiceProfile?.isActive) return "Active";
+    if (isReady && !voiceProfile?.isActive) return "Inactive";
     return "Analyze";
   };
 

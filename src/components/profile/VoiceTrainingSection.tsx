@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { useVoiceProfile } from "@/hooks/useVoiceProfile";
+import { useVoiceProfile, isVoiceProfileReady } from "@/hooks/useVoiceProfile";
 import { toast } from "sonner";
 import { BrandDNAModal } from "./BrandDNAModal";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -44,11 +44,11 @@ export const VoiceTrainingSection = forwardRef<VoiceTrainingSectionRef>(function
     ];
 
     // Helper to check if profile is truly trained/active
-    const isProfileActive = voiceProfile?.is_trained || voiceProfile?.isActive;
+    const isProfileReady = isVoiceProfileReady(voiceProfile);
 
     const handleToggleActive = async (checked: boolean) => {
         // Stop propagation is handled by the wrapper div's onClick
-        if (!voiceProfile?.is_trained && checked) {
+        if (!isProfileReady && checked) {
             toast.error("You must train your brand voice before enabling it.");
             return;
         }
@@ -78,7 +78,7 @@ export const VoiceTrainingSection = forwardRef<VoiceTrainingSectionRef>(function
         // 1. We are currently analyzing
         // 2. The profile is active (has data)
         // 3. The profile has been updated AFTER we started analysis
-        if (isAnalyzing && isProfileActive && voiceProfile?.updated_at && analysisStartTime) {
+        if (isAnalyzing && isProfileReady && voiceProfile?.updated_at && analysisStartTime) {
             const updatedAtTime = new Date(voiceProfile.updated_at).getTime();
             if (updatedAtTime > analysisStartTime) {
                 setIsAnalyzing(false);
@@ -86,7 +86,7 @@ export const VoiceTrainingSection = forwardRef<VoiceTrainingSectionRef>(function
                 toast.success("Brand DNA analysis complete!");
             }
         }
-    }, [isProfileActive, voiceProfile?.updated_at, isAnalyzing, analysisStartTime]);
+    }, [isProfileReady, voiceProfile?.updated_at, isAnalyzing, analysisStartTime]);
 
     // Expose expand method via ref
     useImperativeHandle(ref, () => ({
@@ -210,7 +210,7 @@ export const VoiceTrainingSection = forwardRef<VoiceTrainingSectionRef>(function
     // 2. AND logic: (Has unsaved changes OR Profile is not active yet)
     // If profile is active but posts are same as trained, hasUnsavedChanges is false -> canAnalyze is false.
     // If profile is active and posts differ, hasUnsavedChanges is true -> canAnalyze is true.
-    const canAnalyze = savedPosts.length >= 5 && (hasUnsavedChanges || !isProfileActive);
+    const canAnalyze = savedPosts.length >= 5 && (hasUnsavedChanges || !isProfileReady);
 
     // Score calculation
     let calculatedScore = 0;
@@ -234,7 +234,7 @@ export const VoiceTrainingSection = forwardRef<VoiceTrainingSectionRef>(function
                                 <div>
                                     <CardTitle className="text-lg flex items-center gap-2">
                                         Train Your Brand
-                                        {isProfileActive && (
+                                        {isProfileReady && (
                                             <CheckCircle2 className="w-4 h-4 text-success" />
                                         )}
                                     </CardTitle>
@@ -244,7 +244,7 @@ export const VoiceTrainingSection = forwardRef<VoiceTrainingSectionRef>(function
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">
-                                {voiceProfile?.is_trained && (
+                                {isProfileReady && (
                                     <div
                                         className="flex items-center gap-2 mr-2"
                                         onClick={(e) => e.stopPropagation()}
@@ -366,7 +366,7 @@ export const VoiceTrainingSection = forwardRef<VoiceTrainingSectionRef>(function
                                         <Loader2 className="w-4 h-4 animate-spin" />
                                         {analysisSteps[analysisStep]}
                                     </>
-                                ) : !canAnalyze && isProfileActive ? (
+                                ) : !canAnalyze && isProfileReady ? (
                                     <>
                                         <CheckCircle2 className="w-4 h-4" />
                                         Brand DNA Active
@@ -380,7 +380,7 @@ export const VoiceTrainingSection = forwardRef<VoiceTrainingSectionRef>(function
                                 )}
                             </Button>
 
-                            {!isAnalyzing && isProfileActive && (
+                            {!isAnalyzing && isProfileReady && (
                                 <Button variant="outline" size="lg" onClick={() => setIsModalOpen(true)} className="gap-2 text-primary hover:text-primary/80 min-w-[200px]">
                                     <Eye className="w-4 h-4" />
                                     View My Brand DNA

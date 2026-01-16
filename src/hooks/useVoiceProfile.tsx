@@ -53,6 +53,16 @@ export interface VoiceProfile {
   updated_at: string;
 }
 
+export function isVoiceProfileReady(profile: VoiceProfile | null | undefined): boolean {
+  if (!profile) return false;
+  // It is ready if it is explicitly trained, active, or has a valid generated ID (not a draft container)
+  return !!(
+    profile.is_trained ||
+    profile.isActive ||
+    (profile.id && profile.id !== 'BestPostsFromUser' && profile.id !== 'default')
+  );
+}
+
 export function useVoiceProfile() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -90,12 +100,12 @@ export function useVoiceProfile() {
 
       // 2. Query the LATEST trained profile (regardless of Active status)
       // We want to be able to toggle it on/off, so we need to fetch it even if inactive.
+      // UPDATED: Relaxed query to catch profiles that might have isActive=true but missing is_trained flag
       const collectionRef = collection(db, "users", user.uid, "voice_profiles");
       const q = query(
         collectionRef,
-        where("is_trained", "==", true),
         orderBy("created_at", "desc"),
-        limit(1)
+        limit(5)
       );
       const querySnapshot = await getDocs(q);
 
@@ -103,30 +113,40 @@ export function useVoiceProfile() {
       let activeProfileId = "BestPostsFromUser"; // Default ID if no active profile found
 
       if (!querySnapshot.empty) {
-        const docSnap = querySnapshot.docs[0];
-        activeProfileData = docSnap.data();
-        activeProfileId = docSnap.id;
+        // Find the first valid profile (either is_trained OR isActive)
+        // that is NOT one of the reserved draft docs
+        const validDoc = querySnapshot.docs.find(d => {
+          const data = d.data();
+          const isReserved = d.id === "BestPostsFromUser" || d.id === "default";
+          const hasStatus = data.is_trained === true || data.isActive === true;
+          return !isReserved && hasStatus;
+        });
 
-        // Helper to safely convert Firestore Timestamps to ISO strings
-        const toISO = (dateVal: any) => {
-          if (!dateVal) return null;
-          if (typeof dateVal.toDate === 'function') {
-            return dateVal.toDate().toISOString();
-          }
-          if (dateVal instanceof Date) {
-            return dateVal.toISOString();
-          }
-          return dateVal; // Assume string
-        };
+        if (validDoc) {
+          activeProfileData = validDoc.data();
+          activeProfileId = validDoc.id;
 
-        if (activeProfileData.created_at || activeProfileData.createdAt) {
-          activeProfileData.created_at = toISO(activeProfileData.created_at || activeProfileData.createdAt);
-        }
-        if (activeProfileData.updated_at || activeProfileData.updatedAt) {
-          activeProfileData.updated_at = toISO(activeProfileData.updated_at || activeProfileData.updatedAt);
-        }
-        if (activeProfileData.trained_at || activeProfileData.trainedAt) {
-          activeProfileData.trained_at = toISO(activeProfileData.trained_at || activeProfileData.trainedAt);
+          // Helper to safely convert Firestore Timestamps to ISO strings
+          const toISO = (dateVal: any) => {
+            if (!dateVal) return null;
+            if (typeof dateVal.toDate === 'function') {
+              return dateVal.toDate().toISOString();
+            }
+            if (dateVal instanceof Date) {
+              return dateVal.toISOString();
+            }
+            return dateVal; // Assume string
+          };
+
+          if (activeProfileData.created_at || activeProfileData.createdAt) {
+            activeProfileData.created_at = toISO(activeProfileData.created_at || activeProfileData.createdAt);
+          }
+          if (activeProfileData.updated_at || activeProfileData.updatedAt) {
+            activeProfileData.updated_at = toISO(activeProfileData.updated_at || activeProfileData.updatedAt);
+          }
+          if (activeProfileData.trained_at || activeProfileData.trainedAt) {
+            activeProfileData.trained_at = toISO(activeProfileData.trained_at || activeProfileData.trainedAt);
+          }
         }
       }
 

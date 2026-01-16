@@ -34,7 +34,7 @@ import { GenerateImageDialog } from "@/components/studio/GenerateImageDialog";
 import { Template, useTemplate, useTemplates } from "@/hooks/useTemplates";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { useVoiceProfile } from "@/hooks/useVoiceProfile";
+import { useVoiceProfile, isVoiceProfileReady } from "@/hooks/useVoiceProfile";
 import {
   usePosts,
   type ScheduledPostV2,
@@ -259,7 +259,8 @@ export default function Create() {
   });
 
   const handleToggleBrandDNA = async (checked: boolean) => {
-    if (!voiceProfile?.is_trained && checked) {
+    const isReady = isVoiceProfileReady(voiceProfile);
+    if (!isReady && checked) {
       toast.error("You must train your brand voice before enabling it.");
       return;
     }
